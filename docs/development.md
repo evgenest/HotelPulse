@@ -2,9 +2,9 @@
 
 ## Project Goal
 
-Build a practical mini-project covering the maximum number of technologies from the DIRS21 job description in **1-2 days**. The scope is deliberately minimal — enough to demonstrate real-world patterns without over-engineering.
+Build a practical mini-project covering as many relevant hospitality-platform technologies as possible in **1-2 days**. The scope is deliberately minimal — enough to demonstrate real-world patterns without over-engineering.
 
-The project was designed to match DIRS21's domain (hotel channel management) and demonstrate the exact architecture patterns mentioned in the job listing: event-driven systems, data-driven architecture, SaaS platform development.
+The project was designed around the hotel channel-management domain and demonstrates the core architecture patterns expected in this kind of product: event-driven systems, data-driven architecture, SaaS platform development.
 
 ---
 
@@ -229,6 +229,6 @@ kubectl port-forward svc/web 3000:3000 -n hotelpulse
 
 - **On RabbitMQ**: "I used a topic exchange with a durable queue and manual ack. The Worker uses `BasicQos(1)` so it processes one message at a time — safe for a single-instance demo. In production you'd scale the Worker horizontally and consider dead-letter queues for failed messages."
 
-- **On async architecture**: "The API returns 202 immediately without waiting for confirmation. This matches the pattern from the DIRS21 job description — datengetriebene Architektur. The frontend polls, but SSE or WebSockets would be the production upgrade."
+- **On async architecture**: "The API returns 202 immediately without waiting for confirmation. This reflects a data-driven architecture approach. The frontend polls, but SSE or WebSockets would be the production upgrade."
 
 - **On AI-assisted development**: "I used Claude to accelerate the scaffolding. I reviewed and understood every file — the AI handles the boilerplate, I handle the architecture decisions. That's how I'd use GitHub Copilot on your team too."
