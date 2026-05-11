@@ -164,6 +164,100 @@ A clean PVC is the simplest upgrade path here; the hotel catalog will be reseede
 
 ---
 
+## Deployment Guide
+
+### Do I need a VM (like Hetzner) to run this project?
+
+**No** — for development and demos, everything runs locally via Docker Compose (Option 1 above) with no server required.
+
+If you want to publish it on the internet (e.g. for a portfolio link), a single cheap VPS is enough:
+
+| Provider | Cheapest option | Monthly cost |
+|----------|----------------|--------------|
+| Hetzner | CX22 (2 vCPU, 4 GB RAM) | ~€4 |
+| DigitalOcean | Basic Droplet (1 vCPU, 1 GB RAM) | $6 |
+| Oracle Cloud | Always Free (2 VMs) | Free |
+
+Just install Docker on the server and run `docker compose up -d`. **Kubernetes is not required** for a simple deployment.
+
+---
+
+### What does Kubernetes actually do in this project?
+
+In a real production company, Kubernetes handles orchestration across many servers. In this demo project, the `k8s/` manifests show *how the same workload would be deployed in a production environment*:
+
+| What | Kubernetes feature used |
+|------|-------------------------|
+| Restarts the API automatically if it crashes | `Deployment` with restart policy |
+| Marks RabbitMQ and API pods ready only when healthy, so Services send traffic to them only then | Readiness probes |
+| Gives each service a stable internal hostname | `Service` (ClusterIP) |
+| Provides persistent storage for MongoDB | `PersistentVolumeClaim` |
+| Optionally routes `/api/*` → API and `/` → Web over HTTP | `Ingress` (requires nginx ingress controller) |
+| Isolates all resources from other workloads | `Namespace` `hotelpulse` |
+
+For a single-machine demo, Docker Compose already does all of this. For local Kubernetes quickstarts, use `kubectl port-forward` unless you have also installed an nginx ingress controller and mapped `hotelpulse.local` in your local DNS/hosts file; otherwise `k8s/ingress.yaml` will apply but will not be reachable as documented. The `k8s/` directory shows you know the production path — which is the point at an interview.
+
+---
+
+### Free and cheap Kubernetes options
+
+| Option | Cost | Best for |
+|--------|------|----------|
+| `kind` on your laptop | **Free** | Local dev / demos (this project) |
+| `minikube` on your laptop | **Free** | Local dev / demos |
+| `k3s` on a cheap VPS | ~€4/mo (server only) | Lightweight self-hosted K8s |
+| Docker Desktop (built-in K8s) | **Free** | Windows / Mac dev machines |
+| Oracle Cloud Free Tier | **Free** | Always-free cloud K8s |
+| Hetzner CX22 + k3s | ~€4/mo | Self-hosted production cluster |
+| DigitalOcean Kubernetes | $12/mo+ | Managed K8s (control plane free) |
+
+> **Recommendation for this project:** Use `kind` locally — free, installs in 2 minutes, no cloud account needed.
+
+---
+
+### Quickest path to try Kubernetes locally
+
+Both `kind` and `minikube` work equally well for this project. `kind` (Kubernetes IN Docker) starts faster and needs no VM — it runs K8s nodes inside Docker containers, making it lighter and popular for CI. `minikube` is more beginner-friendly, ships with optional addons (ingress controller, dashboard), and has a larger community. Use whichever feels more comfortable.
+
+**macOS**
+
+```bash
+# kind
+brew install kind kubectl
+
+# minikube (alternative)
+brew install minikube kubectl
+```
+
+**Windows (PowerShell)**
+
+```powershell
+# kind
+winget install Kubernetes.kind
+winget install Kubernetes.kubectl
+
+# minikube (alternative)
+winget install Kubernetes.minikube
+winget install Kubernetes.kubectl
+```
+
+After installing, follow **Option 3 — Kubernetes (kind)** above for the full build → load → deploy → port-forward steps.
+
+> **Windows note:** run the `kind`/`minikube`, `kubectl`, `docker build`, and `docker compose` commands in **Git Bash** or **WSL** — the backgrounding operator `&` and the `open` command are not supported in PowerShell or CMD. Replace `open http://localhost:3000` with `start http://localhost:3000` (CMD) or just open the URL in your browser manually.
+
+### Deploy to a cheap VPS with Docker Compose (no Kubernetes)
+
+```bash
+# On a fresh Ubuntu 24.04 VPS
+curl -fsSL https://get.docker.com | sh
+git clone https://github.com/evgenest/HotelPulse.git && cd HotelPulse
+docker compose up -d
+```
+
+That's it — the full stack is running. No Kubernetes needed.
+
+---
+
 ## Failure Demo
 
 ```bash

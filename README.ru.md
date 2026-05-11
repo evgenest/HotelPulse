@@ -164,6 +164,102 @@ open http://localhost:3000
 
 ---
 
+## Руководство по развёртыванию
+
+### Нужна ли виртуальная машина (например Hetzner) для запуска проекта?
+
+**Нет** — для разработки и демонстрации всё запускается локально через Docker Compose (Вариант 1 выше), без какого-либо сервера.
+
+Если хочется опубликовать проект в интернете (например, для портфолио), достаточно одного дешёвого VPS:
+
+| Провайдер | Самый дешёвый тариф | Стоимость в месяц |
+|-----------|---------------------|-------------------|
+| Hetzner | CX22 (2 vCPU, 4 ГБ RAM) | ~€4 |
+| DigitalOcean | Basic Droplet (1 vCPU, 1 ГБ RAM) | $6 |
+| Oracle Cloud | Always Free (2 VM) | Бесплатно |
+
+Достаточно установить Docker на сервер и запустить `docker compose up -d`. **Kubernetes для простого развёртывания не нужен.**
+
+---
+
+### Для чего здесь нужен Kubernetes и какую функцию выполняет?
+
+В реальной компании Kubernetes управляет оркестрацией контейнеров на множестве серверов. В этом демо-проекте манифесты в `k8s/` показывают, *как тот же набор сервисов разворачивается в production-среде*:
+
+| Что | Какой инструмент Kubernetes |
+|-----|-----------------------------|
+| Автоматически перезапускает API при падении | `Deployment` с политикой перезапуска |
+| Помечает RabbitMQ и API как готовые и добавляет их в endpoints сервисов только после успешной проверки | Readiness probes |
+| Даёт каждому сервису стабильное внутреннее имя | `Service` (ClusterIP) |
+| Обеспечивает постоянное хранилище для MongoDB | `PersistentVolumeClaim` |
+| Роутит `/api/*` → API, `/` → Web через HTTP | `Ingress` (требует nginx ingress controller) |
+| Изолирует все ресурсы от других рабочих нагрузок | `Namespace` `hotelpulse` |
+
+Readiness probes не задают порядок запуска других Pod'ов: `worker` не "ждёт" RabbitMQ на уровне Kubernetes и стартует сразу, полагаясь на логику переподключения приложения.
+
+На одной машине Docker Compose уже делает всё то же самое. Папка `k8s/` демонстрирует знание production-пути — именно это важно показать на интервью.
+
+---
+
+### Бесплатные и дешёвые варианты Kubernetes
+
+| Вариант | Стоимость | Для чего |
+|---------|-----------|----------|
+| `kind` на ноутбуке | **Бесплатно** | Локальная разработка / демо (этот проект) |
+| `minikube` на ноутбуке | **Бесплатно** | Локальная разработка / демо |
+| `k3s` на дешёвом VPS | ~€4/мес (только сервер) | Лёгкий self-hosted Kubernetes |
+| Docker Desktop (встроенный K8s) | **Бесплатно** | Windows / Mac |
+| Oracle Cloud Free Tier | **Бесплатно** | Облачный Kubernetes без оплаты |
+| Hetzner CX22 + k3s | ~€4/мес | Self-hosted production-кластер |
+| DigitalOcean Kubernetes | от $12/мес | Managed Kubernetes |
+
+> **Рекомендация для этого проекта:** Используй `kind` локально — бесплатно, устанавливается за 2 минуты, облачный аккаунт не нужен.
+
+---
+
+### Быстрый старт Kubernetes локально
+
+`kind` и `minikube` одинаково подходят для этого проекта. `kind` (Kubernetes IN Docker) стартует быстрее и не требует виртуальной машины — K8s-узлы запускаются прямо в Docker-контейнерах, что делает его легче и удобнее для CI. `minikube` дружелюбнее для новичков, поставляется с опциональными аддонами (ingress controller, dashboard) и имеет большее сообщество. Выбирай любой.
+
+**macOS**
+
+```bash
+# kind
+brew install kind kubectl
+
+# minikube (альтернатива)
+brew install minikube kubectl
+```
+
+**Windows (PowerShell)**
+
+```powershell
+# kind
+winget install Kubernetes.kind
+winget install Kubernetes.kubectl
+
+# minikube (альтернатива)
+winget install Kubernetes.minikube
+winget install Kubernetes.kubectl
+```
+
+После установки следуй шагам **«Вариант 3 — Kubernetes (kind)»** выше: сборка образов, создание кластера, `kubectl apply -f k8s/`, port-forward.
+
+> **Windows:** команды `kind`/`minikube`, `kubectl`, `docker build` и `docker compose` выполняй в **Git Bash** или **WSL** — оператор `&` и команда `open` не поддерживаются в PowerShell/CMD. Вместо `open http://localhost:3000` используй `start http://localhost:3000` (CMD) или просто открой ссылку в браузере вручную.
+
+### Деплой на дешёвый VPS через Docker Compose (без Kubernetes)
+
+```bash
+# На чистом Ubuntu 24.04 VPS
+curl -fsSL https://get.docker.com | sh
+git clone https://github.com/evgenest/HotelPulse.git && cd HotelPulse
+docker compose up -d
+```
+
+Готово — весь стек работает. Kubernetes не нужен.
+
+---
+
 ## Failure-демо
 
 ```bash
