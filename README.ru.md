@@ -179,7 +179,7 @@ open http://localhost:3000
 | Помечает RabbitMQ и API как готовые и добавляет их в endpoints сервисов только после успешной проверки | Readiness probes |
 | Даёт каждому сервису стабильное внутреннее имя | `Service` (ClusterIP) |
 | Обеспечивает постоянное хранилище для MongoDB | `PersistentVolumeClaim` |
-| Роутит `/api/*` → API, `/` → Web | `Ingress` (nginx) |
+| Роутит `/api/*` → API, `/` → Web через HTTP | `Ingress` (требует nginx ingress controller) |
 | Изолирует все ресурсы от других рабочих нагрузок | `Namespace` `hotelpulse` |
 
 Readiness probes не задают порядок запуска других Pod'ов: `worker` не "ждёт" RabbitMQ на уровне Kubernetes и стартует сразу, полагаясь на логику переподключения приложения.
@@ -204,36 +204,35 @@ Readiness probes не задают порядок запуска других Po
 
 ---
 
-### Быстрый старт Kubernetes локально (kind)
+### Быстрый старт Kubernetes локально
+
+`kind` и `minikube` одинаково подходят для этого проекта. `kind` (Kubernetes IN Docker) стартует быстрее и не требует виртуальной машины — K8s-узлы запускаются прямо в Docker-контейнерах, что делает его легче и удобнее для CI. `minikube` дружелюбнее для новичков, поставляется с опциональными аддонами (ingress controller, dashboard) и имеет большее сообщество. Выбирай любой.
+
+**macOS**
 
 ```bash
-# macOS
+# kind
 brew install kind kubectl
 
-# Windows
+# minikube (альтернатива)
+brew install minikube kubectl
+```
+
+**Windows (PowerShell)**
+
+```powershell
+# kind
 winget install Kubernetes.kind
 winget install Kubernetes.kubectl
 
-# 1. Сборка образов
-docker build -t hotelpulse-api:dev    ./apps/api
-docker build -t hotelpulse-worker:dev ./apps/worker
-docker build -t hotelpulse-web:dev    ./apps/web
-
-# 2. Создаём кластер и загружаем образы
-kind create cluster --name hotelpulse
-kind load docker-image hotelpulse-api:dev    --name hotelpulse
-kind load docker-image hotelpulse-worker:dev --name hotelpulse
-kind load docker-image hotelpulse-web:dev    --name hotelpulse
-
-# 3. Деплой — ждём, пока всё запустится
-kubectl apply -f k8s/
-kubectl get pods -n hotelpulse          # ждём пока все Running
-
-# 4. Доступ
-kubectl port-forward svc/api 8080:8080 -n hotelpulse &
-kubectl port-forward svc/web 3000:3000 -n hotelpulse &
-open http://localhost:3000
+# minikube (альтернатива)
+winget install Kubernetes.minikube
+winget install Kubernetes.kubectl
 ```
+
+После установки следуй шагам **«Вариант 3 — Kubernetes (kind)»** выше: сборка образов, создание кластера, `kubectl apply -f k8s/`, port-forward.
+
+> **Windows:** команды `kind`/`minikube`, `kubectl`, `docker build` и `docker compose` выполняй в **Git Bash** или **WSL** — оператор `&` и команда `open` не поддерживаются в PowerShell/CMD. Вместо `open http://localhost:3000` используй `start http://localhost:3000` (CMD) или просто открой ссылку в браузере вручную.
 
 ### Деплой на дешёвый VPS через Docker Compose (без Kubernetes)
 

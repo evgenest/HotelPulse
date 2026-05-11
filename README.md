@@ -202,19 +202,35 @@ For a single-machine demo, Docker Compose already does all of this. For local Ku
 
 ---
 
-### Quickest path to try Kubernetes locally (kind)
+### Quickest path to try Kubernetes locally
+
+Both `kind` and `minikube` work equally well for this project. `kind` (Kubernetes IN Docker) starts faster and needs no VM — it runs K8s nodes inside Docker containers, making it lighter and popular for CI. `minikube` is more beginner-friendly, ships with optional addons (ingress controller, dashboard), and has a larger community. Use whichever feels more comfortable.
+
+**macOS**
 
 ```bash
-# macOS
+# kind
 brew install kind kubectl
 
-# Windows
+# minikube (alternative)
+brew install minikube kubectl
+```
+
+**Windows (PowerShell)**
+
+```powershell
+# kind
 winget install Kubernetes.kind
 winget install Kubernetes.kubectl
 
-# Then follow the earlier "Option 3 — Kubernetes (kind)" quick start
-# for the canonical build, load, deploy, and port-forward steps.
+# minikube (alternative)
+winget install Kubernetes.minikube
+winget install Kubernetes.kubectl
 ```
+
+After installing, follow **Option 3 — Kubernetes (kind)** above for the full build → load → deploy → port-forward steps.
+
+> **Windows note:** run the `kind`/`minikube`, `kubectl`, `docker build`, and `docker compose` commands in **Git Bash** or **WSL** — the backgrounding operator `&` and the `open` command are not supported in PowerShell or CMD. Replace `open http://localhost:3000` with `start http://localhost:3000` (CMD) or just open the URL in your browser manually.
 
 ### Deploy to a cheap VPS with Docker Compose (no Kubernetes)
 
