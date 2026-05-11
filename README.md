@@ -1,6 +1,6 @@
 # HotelPulse
 
-A minimal hotel-booking SaaS demo that covers the full DIRS21 tech stack in a single project: **.NET 10 · Vue/Nuxt 4 · RabbitMQ · MongoDB · Docker · Kubernetes**.
+A minimal hotel-booking SaaS demo that covers a complete hospitality tech stack in a single project: **.NET 10 · Vue/Nuxt 4 · RabbitMQ · MongoDB · Docker · Kubernetes**.
 
 The core idea: booking confirmations are **async**. A POST to `/api/bookings` immediately returns `202 Accepted` with `status: pending`, publishes a message to RabbitMQ, and a separate Worker Service processes it — then the frontend polls until status flips to `confirmed` or `rejected`.
 

@@ -1,6 +1,6 @@
 # HotelPulse
 
-Мини-SaaS для бронирования отелей, покрывающий полный стек вакансии DIRS21 в одном проекте: **.NET 10 · Vue/Nuxt 4 · RabbitMQ · MongoDB · Docker · Kubernetes**.
+Мини-SaaS для бронирования отелей, покрывающий полный стек современной hospitality-платформы в одном проекте: **.NET 10 · Vue/Nuxt 4 · RabbitMQ · MongoDB · Docker · Kubernetes**.
 
 Основная идея: подтверждение брони **асинхронное**. `POST /api/bookings` сразу возвращает `202 Accepted` со статусом `pending`, публикует сообщение в RabbitMQ, и отдельный Worker Service обрабатывает его — фронтенд при этом опрашивает API до получения `confirmed` или `rejected`.
 
