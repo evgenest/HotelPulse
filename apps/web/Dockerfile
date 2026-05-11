@@ -1,11 +1,12 @@
-FROM node:20-alpine AS build
+FROM node:24-alpine AS build
 WORKDIR /app
-COPY package.json .
-RUN npm install
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+RUN corepack enable && corepack prepare pnpm@11.1.0 --activate
+RUN pnpm install --frozen-lockfile
 COPY . .
-RUN npm run build
+RUN pnpm run build
 
-FROM node:20-alpine AS runtime
+FROM node:24-alpine AS runtime
 WORKDIR /app
 COPY --from=build /app/.output .
 EXPOSE 3000

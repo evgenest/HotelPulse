@@ -28,10 +28,10 @@ docker compose up -d mongo rabbitmq
 Verify RabbitMQ Management UI opens at `http://localhost:15672` (guest / guest).
 You should see the default vhost and no queues yet.
 
-### Step 3 — .NET 8 API (2 h)
+### Step 3 — .NET 10 API (2 h)
 
 Key decisions made in `apps/api/Program.cs`:
-- **Minimal API** style (no controllers) — matches .NET 8 best practices
+- **Minimal API** style (no controllers) — matches .NET 10 best practices
 - **MongoDB.Driver** for database access
 - **RabbitMQ.Client** (raw, no MassTransit) — learn the primitive first
 - Hotels are **seeded on first startup** so no manual DB setup is needed
@@ -43,7 +43,7 @@ Packages used:
 <PackageReference Include="RabbitMQ.Client" Version="6.8.1" />
 ```
 
-### Step 4 — .NET 8 Worker Service (1.5 h)
+### Step 4 — .NET 10 Worker Service (1.5 h)
 
 Key decisions in `apps/worker/BookingConsumer.cs`:
 - Extends **BackgroundService** (ASP.NET Core's hosted service pattern)
@@ -56,9 +56,9 @@ Key decisions in `apps/worker/BookingConsumer.cs`:
 
 Both .NET projects use multi-stage builds:
 ```dockerfile
-FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 ...
-FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS runtime
+FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
 ```
 
 The `aspnet` runtime image is much smaller than `sdk` — important for production images.
@@ -84,7 +84,7 @@ Watch the RabbitMQ UI at `localhost:15672` → Queues → `bookings.created` to 
 
 ## Day 2 — Frontend + Kubernetes (~6-8 h)
 
-### Step 7 — Nuxt 3 frontend (3 h)
+### Step 7 — Nuxt 4 frontend (3 h)
 
 Key decisions in `apps/web/`:
 - **`ssr: false`** in `nuxt.config.ts` — SPA mode, avoids SSR/CSR URL-split complexity
@@ -225,10 +225,10 @@ kubectl port-forward svc/web 3000:3000 -n hotelpulse
 
 ---
 
-## What to Say at the Interview
+## Architecture Notes
 
-- **On RabbitMQ**: "I used a topic exchange with a durable queue and manual ack. The Worker uses `BasicQos(1)` so it processes one message at a time — safe for a single-instance demo. In production you'd scale the Worker horizontally and consider dead-letter queues for failed messages."
+- **RabbitMQ**: "The project uses a topic exchange with a durable queue and manual ack. The Worker uses `BasicQos(1)` so it processes one message at a time — safe for a single-instance demo. In production, the next steps would be horizontal Worker scaling and dead-letter queues."
 
-- **On async architecture**: "The API returns 202 immediately without waiting for confirmation. This reflects a data-driven architecture approach. The frontend polls, but SSE or WebSockets would be the production upgrade."
+- **Async architecture**: "The API returns 202 immediately without waiting for confirmation. This reflects a data-driven architecture approach. The frontend polls, but SSE or WebSockets would be a natural production upgrade."
 
-- **On AI-assisted development**: "I used Claude to accelerate the scaffolding. I reviewed and understood every file — the AI handles the boilerplate, I handle the architecture decisions. That's how I'd use GitHub Copilot on your team too."
+- **AI-assisted development**: "Claude helped accelerate the scaffolding. Every file was still reviewed and understood manually — AI handles repetitive boilerplate, while architecture decisions stay explicit."

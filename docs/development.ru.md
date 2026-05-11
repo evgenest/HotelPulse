@@ -27,10 +27,10 @@ docker compose up -d mongo rabbitmq
 Проверяем: RabbitMQ Management UI открывается на `http://localhost:15672` (guest / guest).
 Должны быть видны default vhost и пустой список очередей.
 
-### Шаг 3 — .NET 8 API (2 ч)
+### Шаг 3 — .NET 10 API (2 ч)
 
 Ключевые решения в `apps/api/Program.cs`:
-- **Minimal API** (без контроллеров) — соответствует best practices .NET 8
+- **Minimal API** (без контроллеров) — соответствует best practices .NET 10
 - **MongoDB.Driver** для работы с базой
 - **RabbitMQ.Client** напрямую, без MassTransit — учим примитив, не абстракцию
 - Отели **засеиваются при первом запуске** — не нужно настраивать БД вручную
@@ -42,7 +42,7 @@ docker compose up -d mongo rabbitmq
 <PackageReference Include="RabbitMQ.Client" Version="6.8.1" />
 ```
 
-### Шаг 4 — .NET 8 Worker Service (1.5 ч)
+### Шаг 4 — .NET 10 Worker Service (1.5 ч)
 
 Ключевые решения в `apps/worker/BookingConsumer.cs`:
 - Наследуется от **BackgroundService** (паттерн hosted service в ASP.NET Core)
@@ -55,9 +55,9 @@ docker compose up -d mongo rabbitmq
 
 Оба .NET проекта используют multi-stage builds:
 ```dockerfile
-FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 ...
-FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS runtime
+FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
 ```
 
 Runtime-образ `aspnet` значительно меньше `sdk` — важно для production-образов.
@@ -83,7 +83,7 @@ curl http://localhost:8080/api/bookings/<id>
 
 ## День 2 — Frontend + Kubernetes (≈6-8 ч)
 
-### Шаг 7 — Nuxt 3 фронтенд (3 ч)
+### Шаг 7 — Nuxt 4 фронтенд (3 ч)
 
 Ключевые решения в `apps/web/`:
 - **`ssr: false`** в `nuxt.config.ts` — SPA-режим, устраняет сложность с SSR/CSR URL-split
@@ -226,10 +226,10 @@ kubectl port-forward svc/web 3000:3000 -n hotelpulse
 
 ---
 
-## Что говорить на интервью
+## Архитектурные заметки
 
-- **По RabbitMQ**: «Я использовал topic exchange с durable queue и manual ack. Worker использует `BasicQos(1)`, обрабатывая одно сообщение за раз — безопасно для single-instance демо. В production'е можно горизонтально масштабировать Worker и добавить dead-letter queue для неудачных сообщений.»
+- **RabbitMQ**: «Проект использует topic exchange с durable queue и manual ack. Worker использует `BasicQos(1)`, обрабатывая одно сообщение за раз — это безопасно для single-instance демо. Для production следующим шагом будут горизонтальное масштабирование Worker и dead-letter queue для неудачных сообщений.»
 
-- **По async-архитектуре**: «API возвращает 202 мгновенно, не ожидая подтверждения. Это точно соответствует паттерну из вакансии — datengetriebene Architektur. Фронтенд делает polling, но для production'а апгрейд — SSE или WebSockets.»
+- **Async-архитектура**: «API возвращает 202 мгновенно, не ожидая подтверждения. Это соответствует data-driven подходу. Фронтенд делает polling, но для production'а естественный апгрейд — SSE или WebSockets.»
 
-- **По AI-assisted development**: «Я использовал Claude для ускорения скаффолдинга. Каждый файл был мной прочитан и понят — AI берёт на себя шаблонный код, я принимаю архитектурные решения. Именно так я буду использовать GitHub Copilot в вашей команде.»
+- **AI-assisted development**: «Claude использовался для ускорения скаффолдинга. Каждый файл всё равно был прочитан и понят вручную — AI берёт на себя шаблонный код, а архитектурные решения остаются явными.»

@@ -5,8 +5,8 @@
       <span class="mono" style="font-size: 11px; color: var(--muted)">5 services</span>
     </div>
     <div class="arch-grid">
-      <div class="arch-node"><span class="key">web</span><span class="val">Nuxt 3</span></div>
-      <div class="arch-node hot"><span class="key">api</span><span class="val">.NET 8</span></div>
+      <div class="arch-node"><span class="key">web</span><span class="val">Nuxt 4</span></div>
+      <div class="arch-node hot"><span class="key">api</span><span class="val">.NET 10</span></div>
       <div class="arch-node"><span class="key">queue</span><span class="val">RabbitMQ</span></div>
       <div class="arch-node"><span class="key">worker</span><span class="val">BackgroundService</span></div>
       <div class="arch-node"><span class="key">db</span><span class="val">MongoDB</span></div>

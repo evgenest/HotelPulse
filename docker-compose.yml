@@ -1,9 +1,12 @@
 services:
   mongo:
-    image: mongo:7
+    image: mongo:8
     ports:
       - "27017:27017"
     volumes:
+      # If you are upgrading an existing local setup from MongoDB 7,
+      # recreate this volume before the first `mongo:8` start (`docker compose down -v`).
+      # The API seeds the hotels collection on startup, so the demo recovers cleanly on a fresh volume.
       - mongo_data:/data/db
     networks:
       - hotelpulse
@@ -14,7 +17,7 @@ services:
       retries: 5
 
   rabbitmq:
-    image: rabbitmq:3-management
+    image: rabbitmq:4-management
     ports:
       - "5672:5672"
       - "15672:15672"

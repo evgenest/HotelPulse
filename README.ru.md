@@ -1,6 +1,6 @@
 # HotelPulse
 
-Мини-SaaS для бронирования отелей, покрывающий полный стек современной hospitality-платформы в одном проекте: **.NET 8 · Vue/Nuxt 3 · RabbitMQ · MongoDB · Docker · Kubernetes**.
+Мини-SaaS для бронирования отелей, покрывающий полный стек современной hospitality-платформы в одном проекте: **.NET 10 · Vue/Nuxt 4 · RabbitMQ · MongoDB · Docker · Kubernetes**.
 
 Основная идея: подтверждение брони **асинхронное**. `POST /api/bookings` сразу возвращает `202 Accepted` со статусом `pending`, публикует сообщение в RabbitMQ, и отдельный Worker Service обрабатывает его — фронтенд при этом опрашивает API до получения `confirmed` или `rejected`.
 
@@ -9,7 +9,7 @@
 ## Архитектура
 
 ```
-[Nuxt 3 SPA]  ── HTTP ──►  [.NET 8 Web API]  ──► [MongoDB]
+[Nuxt 4 SPA]  ── HTTP ──►  [.NET 10 Web API]  ──► [MongoDB]
                                     │
                                     └── publish ──► [RabbitMQ]  ──► [.NET Worker]
                                                                           │
@@ -21,27 +21,27 @@
 
 | Контейнер  | Технология                   | Порты            |
 |------------|------------------------------|------------------|
-| `web`      | Nuxt 3 (Node 20)             | `:3000`          |
-| `api`      | ASP.NET Core 8 Minimal API   | `:8080`          |
-| `worker`   | .NET 8 Worker Service        | —                |
-| `mongo`    | MongoDB 7                    | `:27017`         |
-| `rabbitmq` | RabbitMQ 3 + Management UI   | `:5672` `:15672` |
+| `web`      | Nuxt 4 (Node 24 + pnpm)      | `:3000`          |
+| `api`      | ASP.NET Core 10 Minimal API  | `:8080`          |
+| `worker`   | .NET 10 Worker Service       | —                |
+| `mongo`    | MongoDB 8                    | `:27017`         |
+| `rabbitmq` | RabbitMQ 4 + Management UI   | `:5672` `:15672` |
 
 ---
 
-## Технологии из вакансии
+## Технологии проекта
 
 | Технология       | Где используется                                                       |
 |------------------|------------------------------------------------------------------------|
-| C# / .NET 8      | `apps/api` (Minimal API) + `apps/worker` (BackgroundService)          |
+| C# / .NET 10     | `apps/api` (Minimal API) + `apps/worker` (BackgroundService)          |
 | REST API         | `/api/hotels`, `/api/bookings`                                         |
 | RabbitMQ         | Очередь `bookings.created` между API и Worker                         |
-| Vue 3 / Nuxt 3   | Frontend SPA                                                           |
+| Vue 3 / Nuxt 4   | Frontend SPA                                                           |
 | TypeScript       | Весь фронтенд                                                          |
 | MongoDB          | Коллекции: `hotels`, `bookings`                                        |
 | Docker           | Dockerfile на каждый сервис + `docker-compose.yml`                     |
 | Kubernetes       | 7 манифестов в `k8s/` — запускать через `kind` или Docker Desktop K8s |
-| AI-assisted dev  | Весь проект собран с Claude — стоит упомянуть на интервью              |
+| AI-assisted dev  | Использовался для ускорения скаффолдинга и шаблонных частей проекта    |
 
 ---
 
@@ -58,27 +58,28 @@ hotelpulse/
 │   ├── development.md        # Пошаговый план + верификация
 │   └── development.ru.md
 ├── apps/
-│   ├── api/                  # ASP.NET Core 8 Minimal API
+│   ├── api/                  # ASP.NET Core 10 Minimal API
 │   │   ├── HotelPulse.Api.csproj
 │   │   ├── Program.cs        # все эндпоинты + DI + seed-данные
 │   │   ├── Models/
 │   │   ├── Messaging/        # BookingPublisher.cs
 │   │   └── Dockerfile
-│   ├── worker/               # .NET 8 Worker Service
+│   ├── worker/               # .NET 10 Worker Service
 │   │   ├── HotelPulse.Worker.csproj
 │   │   ├── Program.cs
 │   │   ├── BookingConsumer.cs
 │   │   └── Dockerfile
-│   └── web/                  # Nuxt 3 frontend
+│   └── web/                  # Nuxt 4 frontend
 │       ├── nuxt.config.ts
-│       ├── app.vue
-│       ├── assets/css/main.css
-│       ├── composables/      # useApi, useQueueStore, useBookingStore
-│       ├── components/       # 11 Vue компонентов
-│       ├── pages/
-│       │   ├── index.vue           # список отелей
-│       │   ├── hotels/[id].vue     # детали отеля + форма брони
-│       │   └── bookings/[id].vue   # статус брони (polling)
+│       ├── app/
+│       │   ├── app.vue
+│       │   ├── assets/css/main.css
+│       │   ├── composables/      # useApi, useQueueStore, useBookingStore
+│       │   ├── components/       # 11 Vue компонентов
+│       │   └── pages/
+│       │       ├── index.vue           # список отелей
+│       │       ├── hotels/[id].vue     # детали отеля + форма брони
+│       │       └── bookings/[id].vue   # статус брони (polling)
 │       └── Dockerfile
 └── k8s/
     ├── namespace.yaml
@@ -106,9 +107,18 @@ open http://localhost:3000                     # фронтенд
 open http://localhost:15672                    # RabbitMQ UI (guest / guest)
 ```
 
+Если вы обновляете существующий локальный volume с MongoDB 7 до MongoDB 8, перед первым запуском пересоздайте volume:
+
+```bash
+docker compose down -v
+docker compose up -d
+```
+
+API заново заполняет коллекцию `hotels` при старте, поэтому каталог отелей восстановится автоматически на чистом volume.
+
 ### Вариант 2 — Локально без Docker
 
-Нужно: .NET 8 SDK, Node 20, MongoDB на 27017, RabbitMQ на 5672.
+Нужно: .NET 10 SDK, Node 24, pnpm, MongoDB на 27017, RabbitMQ на 5672.
 
 ```bash
 # Терминал 1 — API
@@ -121,8 +131,8 @@ dotnet run
 
 # Терминал 3 — Frontend
 cd apps/web
-npm install
-npm run dev
+pnpm install
+pnpm run dev
 ```
 
 ### Вариант 3 — Kubernetes (kind)
@@ -148,6 +158,9 @@ kubectl port-forward svc/api 8080:8080 -n hotelpulse &
 kubectl port-forward svc/web 3000:3000 -n hotelpulse &
 open http://localhost:3000
 ```
+
+Если в кластере уже есть PVC с данными MongoDB 7, перед применением `mongo:8` используйте свежий PVC или новый namespace.
+Самый простой путь здесь — чистый PVC; каталог отелей будет заново заполнен при старте API.
 
 ---
 
@@ -247,7 +260,7 @@ docker compose up -d
 
 ---
 
-## Failure-демо (отличная тема для интервью)
+## Failure-демо
 
 ```bash
 # Останавливаем worker — бронь зависнет в статусе "pending"
