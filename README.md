@@ -151,6 +151,101 @@ open http://localhost:3000
 
 ---
 
+## Deployment Guide
+
+### Do I need a VM (like Hetzner) to run this project?
+
+**No** — for development and demos, everything runs locally via Docker Compose (Option 1 above) with no server required.
+
+If you want to publish it on the internet (e.g. for a portfolio link), a single cheap VPS is enough:
+
+| Provider | Cheapest option | Monthly cost |
+|----------|----------------|--------------|
+| Hetzner | CX22 (2 vCPU, 4 GB RAM) | ~€4 |
+| DigitalOcean | Basic Droplet (1 vCPU, 1 GB RAM) | $6 |
+| Oracle Cloud | Always Free (2 VMs) | Free |
+
+Just install Docker on the server and run `docker compose up -d`. **Kubernetes is not required** for a simple deployment.
+
+---
+
+### What does Kubernetes actually do in this project?
+
+In a real production company, Kubernetes handles orchestration across many servers. In this demo project, the `k8s/` manifests show *how the same workload would be deployed in a production environment*:
+
+| What | Kubernetes feature used |
+|------|-------------------------|
+| Restarts the API automatically if it crashes | `Deployment` with restart policy |
+| Waits for RabbitMQ to be healthy before starting Worker | Readiness probes |
+| Gives each service a stable internal hostname | `Service` (ClusterIP) |
+| Provides persistent storage for MongoDB | `PersistentVolumeClaim` |
+| Routes `/api/*` → API and `/` → Web over HTTP | `Ingress` (nginx) |
+| Isolates all resources from other workloads | `Namespace` `hotelpulse` |
+
+For a single-machine demo, Docker Compose already does all of this. The `k8s/` directory shows you know the production path — which is the point at an interview.
+
+---
+
+### Free and cheap Kubernetes options
+
+| Option | Cost | Best for |
+|--------|------|----------|
+| `kind` on your laptop | **Free** | Local dev / demos (this project) |
+| `minikube` on your laptop | **Free** | Local dev / demos |
+| `k3s` on a cheap VPS | ~€4/mo (server only) | Lightweight self-hosted K8s |
+| Docker Desktop (built-in K8s) | **Free** | Windows / Mac dev machines |
+| Oracle Cloud Free Tier | **Free** | Always-free cloud K8s |
+| Hetzner CX22 + k3s | ~€4/mo | Self-hosted production cluster |
+| DigitalOcean Kubernetes | $12/mo+ | Managed K8s (control plane free) |
+
+> **Recommendation for this project:** Use `kind` locally — free, installs in 2 minutes, no cloud account needed.
+
+---
+
+### Quickest path to try Kubernetes locally (kind)
+
+```bash
+# macOS
+brew install kind kubectl
+
+# Windows
+winget install Kubernetes.kind
+winget install Kubernetes.kubectl
+
+# 1. Build images
+docker build -t hotelpulse-api:dev    ./apps/api
+docker build -t hotelpulse-worker:dev ./apps/worker
+docker build -t hotelpulse-web:dev    ./apps/web
+
+# 2. Create cluster and load images
+kind create cluster --name hotelpulse
+kind load docker-image hotelpulse-api:dev    --name hotelpulse
+kind load docker-image hotelpulse-worker:dev --name hotelpulse
+kind load docker-image hotelpulse-web:dev    --name hotelpulse
+
+# 3. Deploy and wait
+kubectl apply -f k8s/
+kubectl get pods -n hotelpulse          # wait until all Running
+
+# 4. Access
+kubectl port-forward svc/api 8080:8080 -n hotelpulse &
+kubectl port-forward svc/web 3000:3000 -n hotelpulse &
+open http://localhost:3000
+```
+
+### Deploy to a cheap VPS with Docker Compose (no Kubernetes)
+
+```bash
+# On a fresh Ubuntu 24.04 VPS
+curl -fsSL https://get.docker.com | sh
+git clone https://github.com/evgenest/HotelPulse.git && cd HotelPulse
+docker compose up -d
+```
+
+That's it — the full stack is running. No Kubernetes needed.
+
+---
+
 ## Failure Demo (great for interviews)
 
 ```bash
