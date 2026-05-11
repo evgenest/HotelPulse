@@ -4,6 +4,9 @@ services:
     ports:
       - "27017:27017"
     volumes:
+      # If you are upgrading an existing local setup from MongoDB 7,
+      # recreate this volume before the first `mongo:8` start (`docker compose down -v`).
+      # The API seeds the hotels collection on startup, so the demo recovers cleanly on a fresh volume.
       - mongo_data:/data/db
     networks:
       - hotelpulse

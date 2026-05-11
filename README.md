@@ -41,7 +41,7 @@ The core idea: booking confirmations are **async**. A POST to `/api/bookings` im
 | MongoDB          | Collections: `hotels`, `bookings`                                 |
 | Docker           | Dockerfile per service + `docker-compose.yml`                     |
 | Kubernetes       | 7 manifests in `k8s/` — use `kind` or Docker Desktop K8s         |
-| AI-assisted dev  | Built end-to-end with Claude — worth mentioning at the interview  |
+| AI-assisted dev  | Used to accelerate scaffolding and repetitive implementation work |
 
 ---
 
@@ -107,6 +107,15 @@ open http://localhost:3000                     # frontend
 open http://localhost:15672                    # RabbitMQ UI (guest / guest)
 ```
 
+If you are upgrading an existing local Docker volume from MongoDB 7 to MongoDB 8, recreate the volume first:
+
+```bash
+docker compose down -v
+docker compose up -d
+```
+
+The API seeds the `hotels` collection on startup, so the catalog is restored automatically on a fresh volume.
+
 ### Option 2 — Local (no Docker)
 
 Prerequisites: .NET 10 SDK, Node 24, pnpm, MongoDB running on 27017, RabbitMQ on 5672.
@@ -150,9 +159,12 @@ kubectl port-forward svc/web 3000:3000 -n hotelpulse &
 open http://localhost:3000
 ```
 
+If your cluster already has a PVC with MongoDB 7 data, use a fresh PVC or a fresh namespace before applying `mongo:8`.
+A clean PVC is the simplest upgrade path here; the hotel catalog will be reseeded on API startup.
+
 ---
 
-## Failure Demo (great for interviews)
+## Failure Demo
 
 ```bash
 # Stop the worker — bookings will stay "pending"

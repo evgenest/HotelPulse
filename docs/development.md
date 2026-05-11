@@ -225,10 +225,10 @@ kubectl port-forward svc/web 3000:3000 -n hotelpulse
 
 ---
 
-## What to Say at the Interview
+## Architecture Notes
 
-- **On RabbitMQ**: "I used a topic exchange with a durable queue and manual ack. The Worker uses `BasicQos(1)` so it processes one message at a time — safe for a single-instance demo. In production you'd scale the Worker horizontally and consider dead-letter queues for failed messages."
+- **RabbitMQ**: "The project uses a topic exchange with a durable queue and manual ack. The Worker uses `BasicQos(1)` so it processes one message at a time — safe for a single-instance demo. In production, the next steps would be horizontal Worker scaling and dead-letter queues."
 
-- **On async architecture**: "The API returns 202 immediately without waiting for confirmation. This reflects a data-driven architecture approach. The frontend polls, but SSE or WebSockets would be the production upgrade."
+- **Async architecture**: "The API returns 202 immediately without waiting for confirmation. This reflects a data-driven architecture approach. The frontend polls, but SSE or WebSockets would be a natural production upgrade."
 
-- **On AI-assisted development**: "I used Claude to accelerate the scaffolding. I reviewed and understood every file — the AI handles the boilerplate, I handle the architecture decisions. That's how I'd use GitHub Copilot on your team too."
+- **AI-assisted development**: "Claude helped accelerate the scaffolding. Every file was still reviewed and understood manually — AI handles repetitive boilerplate, while architecture decisions stay explicit."
