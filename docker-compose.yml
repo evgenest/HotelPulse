@@ -1,0 +1,79 @@
+services:
+  mongo:
+    image: mongo:7
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    networks:
+      - hotelpulse
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    networks:
+      - hotelpulse
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "check_port_connectivity"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build: ./apps/api
+    ports:
+      - "8080:8080"
+    environment:
+      ASPNETCORE_URLS: http://+:8080
+      MONGO_URI: mongodb://mongo:27017
+      RABBITMQ_URI: amqp://guest:guest@rabbitmq:5672/
+    depends_on:
+      mongo:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - hotelpulse
+    restart: on-failure
+
+  worker:
+    build: ./apps/worker
+    environment:
+      MONGO_URI: mongodb://mongo:27017
+      RABBITMQ_URI: amqp://guest:guest@rabbitmq:5672/
+    depends_on:
+      mongo:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - hotelpulse
+    restart: on-failure
+
+  web:
+    build: ./apps/web
+    ports:
+      - "3000:3000"
+    environment:
+      NUXT_PUBLIC_API_BASE: http://localhost:8080
+    depends_on:
+      - api
+    networks:
+      - hotelpulse
+
+networks:
+  hotelpulse:
+    driver: bridge
+
+volumes:
+  mongo_data:

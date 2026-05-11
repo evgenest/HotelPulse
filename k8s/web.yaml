@@ -1,0 +1,36 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web
+  namespace: hotelpulse
+spec:
+  selector:
+    matchLabels:
+      app: web
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: web
+    spec:
+      containers:
+        - name: web
+          image: hotelpulse-web:dev
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 3000
+          env:
+            - name: NUXT_PUBLIC_API_BASE
+              value: http://localhost:8080  # browser calls the port-forwarded API
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: web
+  namespace: hotelpulse
+spec:
+  selector:
+    app: web
+  ports:
+    - port: 3000
+      targetPort: 3000

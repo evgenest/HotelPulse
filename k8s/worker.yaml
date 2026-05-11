@@ -1,0 +1,24 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: worker
+  namespace: hotelpulse
+spec:
+  selector:
+    matchLabels:
+      app: worker
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: worker
+    spec:
+      containers:
+        - name: worker
+          image: hotelpulse-worker:dev
+          imagePullPolicy: Never
+          env:
+            - name: MONGO_URI
+              value: mongodb://mongo:27017
+            - name: RABBITMQ_URI
+              value: amqp://guest:guest@rabbitmq:5672/

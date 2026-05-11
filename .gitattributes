@@ -1,0 +1,15 @@
+# Normalize line endings
+* text=auto eol=lf
+
+# Force LF for these file types
+*.cs    text eol=lf
+*.vue   text eol=lf
+*.ts    text eol=lf
+*.js    text eol=lf
+*.json  text eol=lf
+*.yaml  text eol=lf
+*.yml   text eol=lf
+*.md    text eol=lf
+*.css   text eol=lf
+*.csproj text eol=lf
+Dockerfile text eol=lf
