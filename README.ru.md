@@ -21,7 +21,7 @@
 
 | Контейнер  | Технология                   | Порты            |
 |------------|------------------------------|------------------|
-| `web`      | Nuxt 4 (Node 22)             | `:3000`          |
+| `web`      | Nuxt 4 (Node 24 + pnpm)      | `:3000`          |
 | `api`      | ASP.NET Core 10 Minimal API  | `:8080`          |
 | `worker`   | .NET 10 Worker Service       | —                |
 | `mongo`    | MongoDB 8                    | `:27017`         |
@@ -109,7 +109,7 @@ open http://localhost:15672                    # RabbitMQ UI (guest / guest)
 
 ### Вариант 2 — Локально без Docker
 
-Нужно: .NET 10 SDK, Node 22, MongoDB на 27017, RabbitMQ на 5672.
+Нужно: .NET 10 SDK, Node 24, pnpm, MongoDB на 27017, RabbitMQ на 5672.
 
 ```bash
 # Терминал 1 — API
@@ -122,8 +122,8 @@ dotnet run
 
 # Терминал 3 — Frontend
 cd apps/web
-npm install
-npm run dev
+pnpm install
+pnpm run dev
 ```
 
 ### Вариант 3 — Kubernetes (kind)

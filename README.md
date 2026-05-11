@@ -21,7 +21,7 @@ The core idea: booking confirmations are **async**. A POST to `/api/bookings` im
 
 | Container  | Technology                   | Exposes          |
 |------------|------------------------------|------------------|
-| `web`      | Nuxt 4 (Node 22)             | `:3000`          |
+| `web`      | Nuxt 4 (Node 24 + pnpm)      | `:3000`          |
 | `api`      | ASP.NET Core 10 Minimal API  | `:8080`          |
 | `worker`   | .NET 10 Worker Service       | —                |
 | `mongo`    | MongoDB 8                    | `:27017`         |
@@ -109,7 +109,7 @@ open http://localhost:15672                    # RabbitMQ UI (guest / guest)
 
 ### Option 2 — Local (no Docker)
 
-Prerequisites: .NET 10 SDK, Node 22, MongoDB running on 27017, RabbitMQ on 5672.
+Prerequisites: .NET 10 SDK, Node 24, pnpm, MongoDB running on 27017, RabbitMQ on 5672.
 
 ```bash
 # Terminal 1 — API
@@ -122,8 +122,8 @@ dotnet run
 
 # Terminal 3 — Frontend
 cd apps/web
-npm install
-npm run dev
+pnpm install
+pnpm run dev
 ```
 
 ### Option 3 — Kubernetes (kind)
