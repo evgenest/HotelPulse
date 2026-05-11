@@ -176,13 +176,13 @@ In a real production company, Kubernetes handles orchestration across many serve
 | What | Kubernetes feature used |
 |------|-------------------------|
 | Restarts the API automatically if it crashes | `Deployment` with restart policy |
-| Waits for RabbitMQ to be healthy before starting Worker | Readiness probes |
+| Marks RabbitMQ and API pods ready only when healthy, so Services send traffic to them only then | Readiness probes |
 | Gives each service a stable internal hostname | `Service` (ClusterIP) |
 | Provides persistent storage for MongoDB | `PersistentVolumeClaim` |
-| Routes `/api/*` → API and `/` → Web over HTTP | `Ingress` (nginx) |
+| Optionally routes `/api/*` → API and `/` → Web over HTTP | `Ingress` (requires nginx ingress controller) |
 | Isolates all resources from other workloads | `Namespace` `hotelpulse` |
 
-For a single-machine demo, Docker Compose already does all of this. The `k8s/` directory shows you know the production path — which is the point at an interview.
+For a single-machine demo, Docker Compose already does all of this. For local Kubernetes quickstarts, use `kubectl port-forward` unless you have also installed an nginx ingress controller and mapped `hotelpulse.local` in your local DNS/hosts file; otherwise `k8s/ingress.yaml` will apply but will not be reachable as documented. The `k8s/` directory shows you know the production path — which is the point at an interview.
 
 ---
 
@@ -212,25 +212,8 @@ brew install kind kubectl
 winget install Kubernetes.kind
 winget install Kubernetes.kubectl
 
-# 1. Build images
-docker build -t hotelpulse-api:dev    ./apps/api
-docker build -t hotelpulse-worker:dev ./apps/worker
-docker build -t hotelpulse-web:dev    ./apps/web
-
-# 2. Create cluster and load images
-kind create cluster --name hotelpulse
-kind load docker-image hotelpulse-api:dev    --name hotelpulse
-kind load docker-image hotelpulse-worker:dev --name hotelpulse
-kind load docker-image hotelpulse-web:dev    --name hotelpulse
-
-# 3. Deploy and wait
-kubectl apply -f k8s/
-kubectl get pods -n hotelpulse          # wait until all Running
-
-# 4. Access
-kubectl port-forward svc/api 8080:8080 -n hotelpulse &
-kubectl port-forward svc/web 3000:3000 -n hotelpulse &
-open http://localhost:3000
+# Then follow the earlier "Option 3 — Kubernetes (kind)" quick start
+# for the canonical build, load, deploy, and port-forward steps.
 ```
 
 ### Deploy to a cheap VPS with Docker Compose (no Kubernetes)
