@@ -28,10 +28,10 @@ docker compose up -d mongo rabbitmq
 Verify RabbitMQ Management UI opens at `http://localhost:15672` (guest / guest).
 You should see the default vhost and no queues yet.
 
-### Step 3 — .NET 8 API (2 h)
+### Step 3 — .NET 10 API (2 h)
 
 Key decisions made in `apps/api/Program.cs`:
-- **Minimal API** style (no controllers) — matches .NET 8 best practices
+- **Minimal API** style (no controllers) — matches .NET 10 best practices
 - **MongoDB.Driver** for database access
 - **RabbitMQ.Client** (raw, no MassTransit) — learn the primitive first
 - Hotels are **seeded on first startup** so no manual DB setup is needed
@@ -43,7 +43,7 @@ Packages used:
 <PackageReference Include="RabbitMQ.Client" Version="6.8.1" />
 ```
 
-### Step 4 — .NET 8 Worker Service (1.5 h)
+### Step 4 — .NET 10 Worker Service (1.5 h)
 
 Key decisions in `apps/worker/BookingConsumer.cs`:
 - Extends **BackgroundService** (ASP.NET Core's hosted service pattern)
@@ -56,9 +56,9 @@ Key decisions in `apps/worker/BookingConsumer.cs`:
 
 Both .NET projects use multi-stage builds:
 ```dockerfile
-FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 ...
-FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS runtime
+FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
 ```
 
 The `aspnet` runtime image is much smaller than `sdk` — important for production images.
@@ -84,7 +84,7 @@ Watch the RabbitMQ UI at `localhost:15672` → Queues → `bookings.created` to 
 
 ## Day 2 — Frontend + Kubernetes (~6-8 h)
 
-### Step 7 — Nuxt 3 frontend (3 h)
+### Step 7 — Nuxt 4 frontend (3 h)
 
 Key decisions in `apps/web/`:
 - **`ssr: false`** in `nuxt.config.ts` — SPA mode, avoids SSR/CSR URL-split complexity

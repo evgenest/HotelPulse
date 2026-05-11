@@ -1,6 +1,6 @@
 # HotelPulse
 
-A minimal hotel-booking SaaS demo that covers the full DIRS21 tech stack in a single project: **.NET 8 · Vue/Nuxt 3 · RabbitMQ · MongoDB · Docker · Kubernetes**.
+A minimal hotel-booking SaaS demo that covers the full DIRS21 tech stack in a single project: **.NET 10 · Vue/Nuxt 4 · RabbitMQ · MongoDB · Docker · Kubernetes**.
 
 The core idea: booking confirmations are **async**. A POST to `/api/bookings` immediately returns `202 Accepted` with `status: pending`, publishes a message to RabbitMQ, and a separate Worker Service processes it — then the frontend polls until status flips to `confirmed` or `rejected`.
 
@@ -9,7 +9,7 @@ The core idea: booking confirmations are **async**. A POST to `/api/bookings` im
 ## Architecture
 
 ```
-[Nuxt 3 SPA]  ── HTTP ──►  [.NET 8 Web API]  ──► [MongoDB]
+[Nuxt 4 SPA]  ── HTTP ──►  [.NET 10 Web API]  ──► [MongoDB]
                                     │
                                     └── publish ──► [RabbitMQ]  ──► [.NET Worker]
                                                                           │
@@ -21,11 +21,11 @@ The core idea: booking confirmations are **async**. A POST to `/api/bookings` im
 
 | Container  | Technology                   | Exposes          |
 |------------|------------------------------|------------------|
-| `web`      | Nuxt 3 (Node 20)             | `:3000`          |
-| `api`      | ASP.NET Core 8 Minimal API   | `:8080`          |
-| `worker`   | .NET 8 Worker Service        | —                |
-| `mongo`    | MongoDB 7                    | `:27017`         |
-| `rabbitmq` | RabbitMQ 3 + Management UI   | `:5672` `:15672` |
+| `web`      | Nuxt 4 (Node 22)             | `:3000`          |
+| `api`      | ASP.NET Core 10 Minimal API  | `:8080`          |
+| `worker`   | .NET 10 Worker Service       | —                |
+| `mongo`    | MongoDB 8                    | `:27017`         |
+| `rabbitmq` | RabbitMQ 4 + Management UI   | `:5672` `:15672` |
 
 ---
 
@@ -33,10 +33,10 @@ The core idea: booking confirmations are **async**. A POST to `/api/bookings` im
 
 | Technology       | Where used                                                        |
 |------------------|-------------------------------------------------------------------|
-| C# / .NET 8      | `apps/api` (Minimal API) + `apps/worker` (BackgroundService)     |
+| C# / .NET 10     | `apps/api` (Minimal API) + `apps/worker` (BackgroundService)     |
 | REST API         | `/api/hotels`, `/api/bookings`                                    |
 | RabbitMQ         | `bookings.created` queue between API and Worker                   |
-| Vue 3 / Nuxt 3   | Frontend SPA                                                      |
+| Vue 3 / Nuxt 4   | Frontend SPA                                                      |
 | TypeScript       | All frontend code                                                 |
 | MongoDB          | Collections: `hotels`, `bookings`                                 |
 | Docker           | Dockerfile per service + `docker-compose.yml`                     |
@@ -58,27 +58,28 @@ hotelpulse/
 │   ├── development.md        # Day-by-day guide + verification steps
 │   └── development.ru.md
 ├── apps/
-│   ├── api/                  # ASP.NET Core 8 Minimal API
+│   ├── api/                  # ASP.NET Core 10 Minimal API
 │   │   ├── HotelPulse.Api.csproj
 │   │   ├── Program.cs        # all endpoints + DI + seed data
 │   │   ├── Models/
 │   │   ├── Messaging/        # BookingPublisher.cs
 │   │   └── Dockerfile
-│   ├── worker/               # .NET 8 Worker Service
+│   ├── worker/               # .NET 10 Worker Service
 │   │   ├── HotelPulse.Worker.csproj
 │   │   ├── Program.cs
 │   │   ├── BookingConsumer.cs
 │   │   └── Dockerfile
-│   └── web/                  # Nuxt 3 frontend
+│   └── web/                  # Nuxt 4 frontend
 │       ├── nuxt.config.ts
-│       ├── app.vue
-│       ├── assets/css/main.css
-│       ├── composables/      # useApi, useQueueStore, useBookingStore
-│       ├── components/       # 11 Vue components
-│       ├── pages/
-│       │   ├── index.vue           # hotel list
-│       │   ├── hotels/[id].vue     # hotel detail + booking form
-│       │   └── bookings/[id].vue   # booking status (polling)
+│       ├── app/
+│       │   ├── app.vue
+│       │   ├── assets/css/main.css
+│       │   ├── composables/      # useApi, useQueueStore, useBookingStore
+│       │   ├── components/       # 11 Vue components
+│       │   └── pages/
+│       │       ├── index.vue           # hotel list
+│       │       ├── hotels/[id].vue     # hotel detail + booking form
+│       │       └── bookings/[id].vue   # booking status (polling)
 │       └── Dockerfile
 └── k8s/
     ├── namespace.yaml
@@ -108,7 +109,7 @@ open http://localhost:15672                    # RabbitMQ UI (guest / guest)
 
 ### Option 2 — Local (no Docker)
 
-Prerequisites: .NET 8 SDK, Node 20, MongoDB running on 27017, RabbitMQ on 5672.
+Prerequisites: .NET 10 SDK, Node 22, MongoDB running on 27017, RabbitMQ on 5672.
 
 ```bash
 # Terminal 1 — API

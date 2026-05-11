@@ -1,5 +1,5 @@
 export default defineNuxtConfig({
-  compatibilityDate: '2024-11-01',
+  compatibilityDate: '2026-05-01',
   devtools: { enabled: true },
 
   // SPA mode — avoids SSR/CSR URL-split complexity for this demo

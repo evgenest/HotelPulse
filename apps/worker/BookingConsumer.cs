@@ -158,11 +158,11 @@ public sealed class BookingConsumer : BackgroundService
 
 // ─── Local models (mirror of API models) ─────────────────────────────────────
 
-file record BookingMessage(string BookingId, string HotelId, string RoomId, DateTime CreatedAt);
+record BookingMessage(string BookingId, string HotelId, string RoomId, DateTime CreatedAt);
 
-file record BookingEvent(string Label, bool Done, string? Time, bool Current);
+record BookingEvent(string Label, bool Done, string? Time, bool Current);
 
-file class Booking
+class Booking
 {
     public string Id { get; set; } = "";
     public string Status { get; set; } = "pending";
