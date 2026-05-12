@@ -51,8 +51,7 @@ if (import.meta.client) {
 }
 
 function toHistoryEntry(booking: Booking, previous?: HistoryEntry): HistoryEntry {
-  return {
-    ...previous,
+  const entry = {
     id: booking.id,
     hotelId: booking.hotelId,
     hotelName: booking.hotelName,
@@ -66,6 +65,8 @@ function toHistoryEntry(booking: Booking, previous?: HistoryEntry): HistoryEntry
     total: booking.total,
     createdAt: booking.createdAt,
   }
+
+  return previous ? { ...previous, ...entry } : entry
 }
 
 function sameEntry(a: HistoryEntry, b: HistoryEntry) {
@@ -88,9 +89,9 @@ function sameHistoryEntries(a: HistoryEntry[], b: HistoryEntry[]) {
   if (a.length !== b.length) return false
 
   const byId = new Map(a.map((entry) => [entry.id, entry]))
-  return b.every((entry, index) => {
+  return b.every((entry) => {
     const previous = byId.get(entry.id)
-    return previous !== undefined && a[index]?.id === entry.id && sameEntry(previous, entry)
+    return previous !== undefined && sameEntry(previous, entry)
   })
 }
 
