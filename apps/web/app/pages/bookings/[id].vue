@@ -39,7 +39,7 @@
             </div>
 
             <!-- Status indicator -->
-            <PendingAnimation v-if="booking.status === 'pending'" variant="pipeline" :stage="pendingStage" />
+            <PendingAnimation v-if="booking.status === 'pending'" variant="dots" :stage="pendingStage" />
 
             <div v-else-if="booking.status === 'confirmed'" class="status-check">
               <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="var(--ok)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
