@@ -11,8 +11,14 @@ namespace HotelPulse.Worker;
 public sealed class BookingConsumer : BackgroundService
 {
     private const int NoCurrentEvent = -1;
-    private const int CompletedThroughMessageDeliveredEvent = 2;
-    private const int CompletedThroughReservationLockedEvent = 3;
+
+    private enum BookingEventIndex
+    {
+        ApiReceived = 0,
+        PublishedToQueue = 1,
+        MessageDelivered = 2,
+        ReservationLocked = 3,
+    }
 
     private readonly ILogger<BookingConsumer> _logger;
     private readonly string _mongoUri;
@@ -109,11 +115,11 @@ public sealed class BookingConsumer : BackgroundService
 
         // Step 1 – mark message as delivered (700ms)
         await Task.Delay(700, ct);
-        await PatchEventsAsync(col, msg.BookingId, CompletedThroughMessageDeliveredEvent, now, ct);
+        await PatchEventsAsync(col, msg.BookingId, BookingEventIndex.MessageDelivered, now, ct);
 
         // Step 2 – lock reservation in Mongo (1500ms)
         await Task.Delay(800, ct);
-        await PatchEventsAsync(col, msg.BookingId, CompletedThroughReservationLockedEvent, now, ct);
+        await PatchEventsAsync(col, msg.BookingId, BookingEventIndex.ReservationLocked, now, ct);
 
         // Step 3 – finalise (900ms)
         await Task.Delay(900, ct);
@@ -148,11 +154,12 @@ public sealed class BookingConsumer : BackgroundService
     }
 
     private static async Task PatchEventsAsync(
-        IMongoCollection<Booking> col, string bookingId, int completedThroughIndex, DateTime baseTime, CancellationToken ct)
+        IMongoCollection<Booking> col, string bookingId, BookingEventIndex completedThroughEvent, DateTime baseTime, CancellationToken ct)
     {
         var booking = await col.Find(b => b.Id == bookingId).FirstOrDefaultAsync(ct);
         if (booking is null) return;
 
+        var completedThroughIndex = (int)completedThroughEvent;
         var firstIncompleteIndex = completedThroughIndex + 1;
         var nextCurrentEventIndex = firstIncompleteIndex < booking.Events.Count ? firstIncompleteIndex : NoCurrentEvent;
         var events = booking.Events.Select((e, i) => i <= completedThroughIndex
