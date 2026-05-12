@@ -12,14 +12,16 @@ public sealed class BookingPublisher : IAsyncDisposable
     private const string RoutingKey = "booking.created";
 
     private readonly ConnectionFactory _factory;
+    private readonly ILogger<BookingPublisher> _logger;
     private readonly SemaphoreSlim _initLock = new(1, 1);
 
     private IConnection? _connection;
     private IChannel? _channel;
 
-    public BookingPublisher(ConnectionFactory factory)
+    public BookingPublisher(ConnectionFactory factory, ILogger<BookingPublisher> logger)
     {
         _factory = factory;
+        _logger = logger;
     }
 
     private async Task<IChannel> EnsureChannelAsync(CancellationToken ct)
@@ -89,7 +91,7 @@ public sealed class BookingPublisher : IAsyncDisposable
         _initLock.Dispose();
     }
 
-    private static async ValueTask DisposeStaleChannelAsync(IChannel? channel)
+    private async ValueTask DisposeStaleChannelAsync(IChannel? channel)
     {
         if (channel is null) return;
 
@@ -97,12 +99,13 @@ public sealed class BookingPublisher : IAsyncDisposable
         {
             await channel.DisposeAsync();
         }
-        catch
+        catch (Exception ex)
         {
+            _logger.LogDebug(ex, "Failed to dispose stale RabbitMQ channel");
         }
     }
 
-    private static async ValueTask DisposeStaleConnectionAsync(IConnection? connection)
+    private async ValueTask DisposeStaleConnectionAsync(IConnection? connection)
     {
         if (connection is null) return;
 
@@ -110,8 +113,9 @@ public sealed class BookingPublisher : IAsyncDisposable
         {
             await connection.DisposeAsync();
         }
-        catch
+        catch (Exception ex)
         {
+            _logger.LogDebug(ex, "Failed to dispose stale RabbitMQ connection");
         }
     }
 }

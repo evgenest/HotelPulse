@@ -35,7 +35,8 @@ var rabbitUri = Environment.GetEnvironmentVariable("RABBITMQ_URI") ?? "amqp://gu
 builder.Services.AddSingleton<BookingPublisher>(_ =>
 {
     var factory = new ConnectionFactory { Uri = new Uri(rabbitUri) };
-    return new BookingPublisher(factory);
+    var logger = _.GetRequiredService<ILogger<BookingPublisher>>();
+    return new BookingPublisher(factory, logger);
 });
 
 // CORS – allow frontend origin
