@@ -87,7 +87,7 @@ definePageMeta({ layout: false })
 const { queueState } = useQueueStore()
 const { bookingHistory, clearHistory, refreshHistory, startHistorySync } = useBookingStore()
 
-const historyOpen = ref(false)
+const historyOpen = useHistoryRailState()
 const hotelsRef = ref<HTMLElement | null>(null)
 let stopHistorySync: (() => void) | null = null
 

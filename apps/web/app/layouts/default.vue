@@ -31,7 +31,7 @@ const route = useRoute()
 const { queueState } = useQueueStore()
 const { bookingHistory, clearHistory, refreshHistory, startHistorySync } = useBookingStore()
 
-const historyOpen = ref(false)
+const historyOpen = useHistoryRailState()
 let stopHistorySync: (() => void) | null = null
 
 const currentBookingId = computed(() =>

@@ -141,7 +141,7 @@ const config = useRuntimeConfig()
 const { queueState, onPublish } = useQueueStore()
 const { bookingHistory, addBooking, clearHistory, refreshHistory, startHistorySync } = useBookingStore()
 
-const historyOpen = ref(false)
+const historyOpen = useHistoryRailState()
 const showForm = ref(false)
 let stopHistorySync: (() => void) | null = null
 

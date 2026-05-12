@@ -115,7 +115,7 @@ const config = useRuntimeConfig()
 const { queueState, onAck } = useQueueStore()
 const { bookingHistory, updateStatus, clearHistory, refreshHistory, startHistorySync } = useBookingStore()
 
-const historyOpen = ref(false)
+const historyOpen = useHistoryRailState()
 const booking = ref<Booking | null>(null)
 const loading = ref(true)
 let stopHistorySync: (() => void) | null = null
