@@ -113,7 +113,15 @@ app.MapPost("/api/bookings", async (
 app.MapGet("/api/bookings", async (string? ids, IMongoCollection<Booking> col) =>
 {
     if (string.IsNullOrWhiteSpace(ids))
-        return Results.Ok(Array.Empty<Booking>());
+    {
+        var recentBookings = await col
+            .Find(_ => true)
+            .SortByDescending(b => b.CreatedAt)
+            .Limit(20)
+            .ToListAsync();
+
+        return Results.Ok(recentBookings);
+    }
 
     var requestedIds = ids
         .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)

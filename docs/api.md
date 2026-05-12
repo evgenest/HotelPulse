@@ -59,8 +59,11 @@ Creates a booking and publishes a message to RabbitMQ.
 { "id": "bkg_a3f9c12d8e4b", "status": "pending" }
 ```
 
+#### `GET /api/bookings`
+Returns the 20 most recent bookings ordered by creation time, newest first. The web history rail uses this endpoint to load MongoDB-backed booking history consistently across pages.
+
 #### `GET /api/bookings?ids={id1},{id2}`
-Returns the current state of up to 20 known bookings, preserving the requested order. The web history rail uses this endpoint to reconcile locally stored booking history with MongoDB-backed booking data without issuing one request per entry.
+Returns the current state of up to 20 known bookings, preserving the requested order. This can be used to reconcile a known set of booking IDs without issuing one request per entry.
 
 **Response `200 OK`**
 ```json

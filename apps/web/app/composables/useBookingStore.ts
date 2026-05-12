@@ -50,9 +50,9 @@ if (import.meta.client) {
   bookingHistory.value = loadFromStorage()
 }
 
-function toHistoryEntry(booking: Booking, previous: HistoryEntry): HistoryEntry {
+function toHistoryEntry(booking: Booking): HistoryEntry {
   return {
-    ...previous,
+    id: booking.id,
     hotelId: booking.hotelId,
     hotelName: booking.hotelName,
     roomId: booking.roomId,
@@ -84,33 +84,19 @@ function sameEntry(a: HistoryEntry, b: HistoryEntry) {
 }
 
 async function refreshHistoryFromApi(apiBase: string, force = false) {
-  if (import.meta.server || bookingHistory.value.length === 0) return
+  if (import.meta.server) return
 
   const now = Date.now()
   if (!force && now - lastRefreshAt < REFRESH_TTL_MS) return
   if (refreshPromise) return refreshPromise
 
-  const ids = [...new Set(bookingHistory.value.map((entry) => entry.id))].slice(0, MAX_HISTORY)
-  if (ids.length === 0) return
-
-  refreshPromise = $fetch<Booking[]>(`${apiBase}/api/bookings`, {
-    query: { ids: ids.join(',') },
-  })
+  refreshPromise = $fetch<Booking[]>(`${apiBase}/api/bookings`)
     .then((bookings) => {
       lastRefreshAt = Date.now()
 
-      const byId = new Map(bookings.map((booking) => [booking.id, booking]))
-      let changed = false
-      const next = bookingHistory.value.map((entry) => {
-        const booking = byId.get(entry.id)
-        if (!booking) return entry
-
-        const updated = toHistoryEntry(booking, entry)
-        if (!sameEntry(entry, updated)) {
-          changed = true
-        }
-        return updated
-      })
+      const next = bookings.slice(0, MAX_HISTORY).map(toHistoryEntry)
+      const changed = next.length !== bookingHistory.value.length
+        || next.some((entry, index) => !sameEntry(entry, bookingHistory.value[index]))
 
       if (changed) {
         bookingHistory.value = next
