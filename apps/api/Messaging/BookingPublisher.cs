@@ -31,14 +31,31 @@ public sealed class BookingPublisher : IAsyncDisposable
         {
             if (_channel is { IsOpen: true }) return _channel;
 
-            _connection = await _factory.CreateConnectionAsync(ct);
-            _channel = await _connection.CreateChannelAsync(cancellationToken: ct);
+            var previousChannel = _channel;
+            var previousConnection = _connection;
+            var connection = await _factory.CreateConnectionAsync(ct);
+            var channel = await connection.CreateChannelAsync(cancellationToken: ct);
 
-            await _channel.ExchangeDeclareAsync(ExchangeName, ExchangeType.Topic, durable: true, cancellationToken: ct);
-            await _channel.QueueDeclareAsync(QueueName, durable: true, exclusive: false, autoDelete: false, cancellationToken: ct);
-            await _channel.QueueBindAsync(QueueName, ExchangeName, RoutingKey, cancellationToken: ct);
+            try
+            {
+                await channel.ExchangeDeclareAsync(ExchangeName, ExchangeType.Topic, durable: true, cancellationToken: ct);
+                await channel.QueueDeclareAsync(QueueName, durable: true, exclusive: false, autoDelete: false, cancellationToken: ct);
+                await channel.QueueBindAsync(QueueName, ExchangeName, RoutingKey, cancellationToken: ct);
+            }
+            catch
+            {
+                await channel.DisposeAsync();
+                await connection.DisposeAsync();
+                throw;
+            }
 
-            return _channel;
+            _connection = connection;
+            _channel = channel;
+
+            await DisposeStaleChannelAsync(previousChannel);
+            await DisposeStaleConnectionAsync(previousConnection);
+
+            return channel;
         }
         finally
         {
@@ -67,8 +84,34 @@ public sealed class BookingPublisher : IAsyncDisposable
 
     public async ValueTask DisposeAsync()
     {
-        if (_channel is not null) await _channel.DisposeAsync();
-        if (_connection is not null) await _connection.DisposeAsync();
+        await DisposeStaleChannelAsync(_channel);
+        await DisposeStaleConnectionAsync(_connection);
         _initLock.Dispose();
+    }
+
+    private static async ValueTask DisposeStaleChannelAsync(IChannel? channel)
+    {
+        if (channel is null) return;
+
+        try
+        {
+            await channel.DisposeAsync();
+        }
+        catch
+        {
+        }
+    }
+
+    private static async ValueTask DisposeStaleConnectionAsync(IConnection? connection)
+    {
+        if (connection is null) return;
+
+        try
+        {
+            await connection.DisposeAsync();
+        }
+        catch
+        {
+        }
     }
 }

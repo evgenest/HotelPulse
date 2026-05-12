@@ -60,7 +60,7 @@ public sealed class BookingConsumer : BackgroundService
         await channel.BasicQosAsync(0, 1, false, ct); // process one message at a time
 
         var tcs = new TaskCompletionSource();
-        await using var registration = ct.Register(() => tcs.TrySetCanceled());
+        using var registration = ct.Register(() => tcs.TrySetCanceled(ct));
 
         var consumer = new AsyncEventingBasicConsumer(channel);
         consumer.ReceivedAsync += async (_, ea) =>
@@ -73,19 +73,19 @@ public sealed class BookingConsumer : BackgroundService
 
                 if (msg is null)
                 {
-                    await channel.BasicNackAsync(ea.DeliveryTag, false, false, ct);
+                    await channel.BasicNackAsync(ea.DeliveryTag, multiple: false, requeue: false, cancellationToken: CancellationToken.None);
                     return;
                 }
 
                 _logger.LogInformation("[worker] Processing booking {Id}", msg.BookingId);
                 await ProcessBookingAsync(bookings, msg, ct);
 
-                await channel.BasicAckAsync(ea.DeliveryTag, false, ct);
+                await channel.BasicAckAsync(ea.DeliveryTag, multiple: false, cancellationToken: CancellationToken.None);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error processing message");
-                await channel.BasicNackAsync(ea.DeliveryTag, false, requeue: false, ct);
+                await channel.BasicNackAsync(ea.DeliveryTag, multiple: false, requeue: false, cancellationToken: CancellationToken.None);
             }
         };
 
