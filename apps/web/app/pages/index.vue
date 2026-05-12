@@ -85,7 +85,7 @@ import { useBookingStore } from '~/composables/useBookingStore'
 definePageMeta({ layout: false })
 
 const { queueState } = useQueueStore()
-const { bookingHistory, clearHistory, startHistorySync } = useBookingStore()
+const { bookingHistory, clearHistory, refreshHistory, startHistorySync } = useBookingStore()
 
 const historyOpen = ref(false)
 const hotelsRef = ref<HTMLElement | null>(null)
@@ -100,8 +100,17 @@ function scrollToHotels() {
   hotelsRef.value?.scrollIntoView({ behavior: 'smooth' })
 }
 
+watch(historyOpen, (isOpen) => {
+  if (isOpen) {
+    void refreshHistory({ force: true })
+  }
+})
+
 onMounted(() => {
-  stopHistorySync = startHistorySync({ immediate: true })
+  stopHistorySync = startHistorySync({
+    immediate: true,
+    pollWhen: () => historyOpen.value,
+  })
 })
 
 onUnmounted(() => {

@@ -139,7 +139,7 @@ definePageMeta({ layout: false })
 const route = useRoute()
 const config = useRuntimeConfig()
 const { queueState, onPublish } = useQueueStore()
-const { bookingHistory, addBooking, clearHistory, startHistorySync } = useBookingStore()
+const { bookingHistory, addBooking, clearHistory, refreshHistory, startHistorySync } = useBookingStore()
 
 const historyOpen = ref(false)
 const showForm = ref(false)
@@ -198,8 +198,17 @@ async function handleBookingSubmit(data: {
   }
 }
 
+watch(historyOpen, (isOpen) => {
+  if (isOpen) {
+    void refreshHistory({ force: true })
+  }
+})
+
 onMounted(() => {
-  stopHistorySync = startHistorySync({ immediate: true })
+  stopHistorySync = startHistorySync({
+    immediate: true,
+    pollWhen: () => historyOpen.value,
+  })
 })
 
 onUnmounted(() => {

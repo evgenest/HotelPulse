@@ -137,6 +137,7 @@ export function useBookingStore() {
   function updateStatus(id: string, status: string) {
     const idx = bookingHistory.value.findIndex((b) => b.id === id)
     if (idx !== -1) {
+      if (bookingHistory.value[idx].status === status) return
       bookingHistory.value[idx] = { ...bookingHistory.value[idx], status }
       saveToStorage(bookingHistory.value)
     }
@@ -165,7 +166,7 @@ export function useBookingStore() {
     })
   }
 
-  function startHistorySync(options: { immediate?: boolean } = {}) {
+  function startHistorySync(options: { immediate?: boolean; pollWhen?: () => boolean } = {}) {
     if (import.meta.server) return () => {}
 
     syncConsumers++
@@ -177,7 +178,7 @@ export function useBookingStore() {
 
     if (syncInterval === null) {
       syncInterval = setInterval(() => {
-        if (document.visibilityState === 'visible') {
+        if (document.visibilityState === 'visible' && (options.pollWhen?.() ?? true)) {
           void refreshHistory()
         }
       }, SYNC_INTERVAL_MS)

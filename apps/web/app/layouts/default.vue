@@ -29,7 +29,7 @@ import { useBookingStore } from '~/composables/useBookingStore'
 
 const route = useRoute()
 const { queueState } = useQueueStore()
-const { bookingHistory, clearHistory, startHistorySync } = useBookingStore()
+const { bookingHistory, clearHistory, refreshHistory, startHistorySync } = useBookingStore()
 
 const historyOpen = ref(false)
 let stopHistorySync: (() => void) | null = null
@@ -38,8 +38,17 @@ const currentBookingId = computed(() =>
   route.name === 'bookings-id' ? String(route.params.id) : null
 )
 
+watch(historyOpen, (isOpen) => {
+  if (isOpen) {
+    void refreshHistory({ force: true })
+  }
+})
+
 onMounted(() => {
-  stopHistorySync = startHistorySync({ immediate: true })
+  stopHistorySync = startHistorySync({
+    immediate: true,
+    pollWhen: () => historyOpen.value,
+  })
 })
 
 onUnmounted(() => {

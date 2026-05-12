@@ -113,7 +113,7 @@ const BOOKING_POLL_INTERVAL_MS = 1500
 const route = useRoute()
 const config = useRuntimeConfig()
 const { queueState, onAck } = useQueueStore()
-const { bookingHistory, updateStatus, clearHistory, startHistorySync } = useBookingStore()
+const { bookingHistory, updateStatus, clearHistory, refreshHistory, startHistorySync } = useBookingStore()
 
 const historyOpen = ref(false)
 const booking = ref<Booking | null>(null)
@@ -176,8 +176,17 @@ function stopPolling() {
   }
 }
 
+watch(historyOpen, (isOpen) => {
+  if (isOpen) {
+    void refreshHistory({ force: true })
+  }
+})
+
 onMounted(async () => {
-  stopHistorySync = startHistorySync({ immediate: true })
+  stopHistorySync = startHistorySync({
+    immediate: true,
+    pollWhen: () => historyOpen.value,
+  })
   await fetchBooking()
   if (booking.value?.status === 'pending') {
     startPolling()
