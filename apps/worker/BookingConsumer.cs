@@ -11,6 +11,8 @@ namespace HotelPulse.Worker;
 public sealed class BookingConsumer : BackgroundService
 {
     private const int NoCurrentEvent = -1;
+    private const int EventsCompletedAfterDelivery = 3;
+    private const int EventsCompletedAfterReservationLock = 4;
 
     private readonly ILogger<BookingConsumer> _logger;
     private readonly string _mongoUri;
@@ -107,11 +109,11 @@ public sealed class BookingConsumer : BackgroundService
 
         // Step 1 – mark message as delivered (700ms)
         await Task.Delay(700, ct);
-        await PatchEventsAsync(col, msg.BookingId, 3, now, ct);
+        await PatchEventsAsync(col, msg.BookingId, EventsCompletedAfterDelivery, now, ct);
 
         // Step 2 – lock reservation in Mongo (1500ms)
         await Task.Delay(800, ct);
-        await PatchEventsAsync(col, msg.BookingId, 4, now, ct);
+        await PatchEventsAsync(col, msg.BookingId, EventsCompletedAfterReservationLock, now, ct);
 
         // Step 3 – finalise (900ms)
         await Task.Delay(900, ct);
