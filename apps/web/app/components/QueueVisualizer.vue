@@ -57,5 +57,5 @@ defineProps<{
 }>()
 
 const { messages } = useQueueStore()
-const minimized = ref(false)
+const minimized = useQueueVisualizerState()
 </script>

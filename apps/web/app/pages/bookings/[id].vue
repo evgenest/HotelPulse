@@ -39,7 +39,7 @@
             </div>
 
             <!-- Status indicator -->
-            <PendingAnimation v-if="booking.status === 'pending'" variant="pipeline" :stage="pendingStage" />
+            <PendingAnimation v-if="booking.status === 'pending'" variant="dots" :stage="pendingStage" />
 
             <div v-else-if="booking.status === 'confirmed'" class="status-check">
               <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="var(--ok)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
@@ -108,14 +108,18 @@ import type { Booking } from '~/composables/useApi'
 
 definePageMeta({ layout: false })
 
+const BOOKING_PENDING_POLL_INTERVAL_MS = 1500
+const BOOKING_REVALIDATE_INTERVAL_MS = 5000
+
 const route = useRoute()
 const config = useRuntimeConfig()
 const { queueState, onAck } = useQueueStore()
-const { bookingHistory, updateStatus, clearHistory } = useBookingStore()
+const { bookingHistory, updateStatus, clearHistory, refreshHistory, startHistorySync } = useBookingStore()
 
-const historyOpen = ref(false)
+const historyOpen = useHistoryRailState()
 const booking = ref<Booking | null>(null)
 const loading = ref(true)
+let stopHistorySync: (() => void) | null = null
 
 const firstName = computed(() => booking.value?.guestName.split(' ')[0] ?? '')
 
@@ -129,25 +133,54 @@ const pendingStage = computed(() => {
 
 // Polling
 let pollInterval: ReturnType<typeof setInterval> | null = null
+let pollIntervalMs: number | null = null
+
+function shouldSyncActiveBooking() {
+  return import.meta.client ? document.visibilityState === 'visible' : true
+}
 
 async function fetchBooking() {
   try {
     const result = await $fetch<Booking>(
       `${config.public.apiBase}/api/bookings/${route.params.id}`
     )
-    const wasTerminal = booking.value && booking.value.status !== 'pending'
+    const prevStatus = booking.value?.status ?? null
     booking.value = result
     loading.value = false
 
-    // Ack in queue visualizer and update history when status changes to terminal
-    if (!wasTerminal && result.status !== 'pending') {
-      onAck()
-      updateStatus(result.id, result.status)
-      stopPolling()
+    // Reconcile the active booking immediately; the global history sync
+    // refreshes the rest of the cached entry details.
+    updateStatus(result.id, result.status)
+
+    if (result.status !== 'pending') {
+      // Ack the queue visualizer when first arriving at a terminal state
+      // (i.e. transition from null or pending → terminal)
+      if (prevStatus === null || prevStatus === 'pending') {
+        onAck()
+      }
     }
+
+    syncPolling(result.status)
   } catch {
     loading.value = false
   }
+}
+
+function syncPolling(status: Booking['status']) {
+  const nextIntervalMs =
+    status === 'pending' ? BOOKING_PENDING_POLL_INTERVAL_MS : BOOKING_REVALIDATE_INTERVAL_MS
+
+  if (pollInterval !== null && pollIntervalMs === nextIntervalMs) {
+    return
+  }
+
+  stopPolling()
+  pollIntervalMs = nextIntervalMs
+  pollInterval = setInterval(() => {
+    if (shouldSyncActiveBooking()) {
+      void fetchBooking()
+    }
+  }, nextIntervalMs)
 }
 
 function stopPolling() {
@@ -155,16 +188,41 @@ function stopPolling() {
     clearInterval(pollInterval)
     pollInterval = null
   }
+  pollIntervalMs = null
 }
 
-onMounted(async () => {
-  await fetchBooking()
-  if (booking.value?.status === 'pending') {
-    pollInterval = setInterval(fetchBooking, 1500)
+const stopHistoryOpenWatch = watch(historyOpen, (isOpen) => {
+  if (isOpen) {
+    void refreshHistory({ force: true })
   }
 })
 
-onUnmounted(stopPolling)
+function handlePageResume() {
+  if (booking.value && shouldSyncActiveBooking()) {
+    void fetchBooking()
+  }
+}
+
+onMounted(async () => {
+  stopHistorySync = startHistorySync({
+    immediate: true,
+    pollWhen: () => historyOpen.value,
+  })
+  window.addEventListener('focus', handlePageResume)
+  document.addEventListener('visibilitychange', handlePageResume)
+  await fetchBooking()
+  if (booking.value) {
+    syncPolling(booking.value.status)
+  }
+})
+
+onUnmounted(() => {
+  stopHistoryOpenWatch()
+  stopPolling()
+  stopHistorySync?.()
+  window.removeEventListener('focus', handlePageResume)
+  document.removeEventListener('visibilitychange', handlePageResume)
+})
 
 async function retry() {
   if (!booking.value) return

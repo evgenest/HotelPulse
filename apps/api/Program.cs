@@ -110,6 +110,41 @@ app.MapPost("/api/bookings", async (
     return Results.Accepted($"/api/bookings/{id}", new { id, status = "pending" });
 });
 
+app.MapGet("/api/bookings", async (string? ids, IMongoCollection<Booking> col) =>
+{
+    if (string.IsNullOrWhiteSpace(ids))
+    {
+        var recentBookings = await col
+            .Find(_ => true)
+            .SortByDescending(b => b.CreatedAt)
+            .Limit(20)
+            .ToListAsync();
+
+        return Results.Ok(recentBookings);
+    }
+
+    var requestedIds = ids
+        .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+        .Distinct(StringComparer.Ordinal)
+        .Take(20)
+        .ToList();
+
+    if (requestedIds.Count == 0)
+        return Results.Ok(Array.Empty<Booking>());
+
+    var bookings = await col
+        .Find(Builders<Booking>.Filter.In(b => b.Id, requestedIds))
+        .ToListAsync();
+
+    var byId = bookings.ToDictionary(b => b.Id, StringComparer.Ordinal);
+    var ordered = requestedIds
+        .Where(byId.ContainsKey)
+        .Select(id => byId[id])
+        .ToList();
+
+    return Results.Ok(ordered);
+});
+
 app.MapGet("/api/bookings/{id}", async (string id, IMongoCollection<Booking> col) =>
 {
     var b = await col.Find(x => x.Id == id).FirstOrDefaultAsync();
