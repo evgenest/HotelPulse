@@ -1,4 +1,5 @@
 using MongoDB.Bson.Serialization.Conventions;
+using MongoDB.Bson.Serialization.Attributes;
 using MongoDB.Driver;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
@@ -9,6 +10,16 @@ namespace HotelPulse.Worker;
 
 public sealed class BookingConsumer : BackgroundService
 {
+    private const int NoCurrentEvent = -1;
+
+    private enum BookingEventIndex
+    {
+        ApiReceived = 0,
+        PublishedToQueue = 1,
+        MessageDelivered = 2,
+        ReservationLocked = 3,
+    }
+
     private readonly ILogger<BookingConsumer> _logger;
     private readonly string _mongoUri;
     private readonly string _rabbitUri;
@@ -104,11 +115,11 @@ public sealed class BookingConsumer : BackgroundService
 
         // Step 1 – mark message as delivered (700ms)
         await Task.Delay(700, ct);
-        await PatchEventsAsync(col, msg.BookingId, 1, now, ct);
+        await PatchEventsAsync(col, msg.BookingId, BookingEventIndex.MessageDelivered, now, ct);
 
         // Step 2 – lock reservation in Mongo (1500ms)
         await Task.Delay(800, ct);
-        await PatchEventsAsync(col, msg.BookingId, 2, now, ct);
+        await PatchEventsAsync(col, msg.BookingId, BookingEventIndex.ReservationLocked, now, ct);
 
         // Step 3 – finalise (900ms)
         await Task.Delay(900, ct);
@@ -143,14 +154,16 @@ public sealed class BookingConsumer : BackgroundService
     }
 
     private static async Task PatchEventsAsync(
-        IMongoCollection<Booking> col, string bookingId, int doneUpTo, DateTime baseTime, CancellationToken ct)
+        IMongoCollection<Booking> col, string bookingId, BookingEventIndex completedThroughEvent, DateTime baseTime, CancellationToken ct)
     {
         var booking = await col.Find(b => b.Id == bookingId).FirstOrDefaultAsync(ct);
         if (booking is null) return;
 
-        var events = booking.Events.Select((e, i) => i < doneUpTo
+        var indexAfterCompletedEvent = (int)completedThroughEvent + 1;
+        var nextCurrentEventIndex = indexAfterCompletedEvent < booking.Events.Count ? indexAfterCompletedEvent : NoCurrentEvent;
+        var events = booking.Events.Select((e, i) => i < indexAfterCompletedEvent
             ? e with { Done = true, Current = false, Time = e.Time ?? baseTime.AddMilliseconds(i * 700).ToString("HH:mm:ss") }
-            : i == doneUpTo
+            : i == nextCurrentEventIndex
                 ? e with { Current = true }
                 : e).ToList();
 
@@ -164,13 +177,15 @@ public sealed class BookingConsumer : BackgroundService
 
 internal record BookingMessage(string BookingId, string HotelId, string RoomId, DateTime CreatedAt);
 
-internal record BookingEvent(string Label, bool Done, string? Time, bool Current);
-
+[BsonIgnoreExtraElements]
 internal class Booking
 {
+    [BsonId]
     public string Id { get; set; } = "";
     public string Status { get; set; } = "pending";
     public string? ConfirmationCode { get; set; }
     public string? RejectionReason { get; set; }
     public List<BookingEvent> Events { get; set; } = [];
 }
+
+internal record BookingEvent(string Label, bool Done, string? Time, bool Current);
