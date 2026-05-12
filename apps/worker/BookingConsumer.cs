@@ -10,6 +10,8 @@ namespace HotelPulse.Worker;
 
 public sealed class BookingConsumer : BackgroundService
 {
+    private const int NoCurrentEvent = -1;
+
     private readonly ILogger<BookingConsumer> _logger;
     private readonly string _mongoUri;
     private readonly string _rabbitUri;
@@ -149,7 +151,7 @@ public sealed class BookingConsumer : BackgroundService
         var booking = await col.Find(b => b.Id == bookingId).FirstOrDefaultAsync(ct);
         if (booking is null) return;
 
-        var currentIndex = completedCount < booking.Events.Count ? completedCount : -1;
+        var currentIndex = completedCount < booking.Events.Count ? completedCount : NoCurrentEvent;
         var events = booking.Events.Select((e, i) => i < completedCount
             ? e with { Done = true, Current = false, Time = e.Time ?? baseTime.AddMilliseconds(i * 700).ToString("HH:mm:ss") }
             : i == currentIndex
