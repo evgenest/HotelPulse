@@ -11,8 +11,8 @@ namespace HotelPulse.Worker;
 public sealed class BookingConsumer : BackgroundService
 {
     private const int NoCurrentEvent = -1;
-    private const int EventsCompletedAfterDelivery = 3;
-    private const int EventsCompletedAfterReservationLock = 4;
+    private const int MessageDeliveredEventIndex = 2;
+    private const int ReservationLockedEventIndex = 3;
 
     private readonly ILogger<BookingConsumer> _logger;
     private readonly string _mongoUri;
@@ -109,11 +109,11 @@ public sealed class BookingConsumer : BackgroundService
 
         // Step 1 – mark message as delivered (700ms)
         await Task.Delay(700, ct);
-        await PatchEventsAsync(col, msg.BookingId, EventsCompletedAfterDelivery, now, ct);
+        await PatchEventsAsync(col, msg.BookingId, MessageDeliveredEventIndex, now, ct);
 
         // Step 2 – lock reservation in Mongo (1500ms)
         await Task.Delay(800, ct);
-        await PatchEventsAsync(col, msg.BookingId, EventsCompletedAfterReservationLock, now, ct);
+        await PatchEventsAsync(col, msg.BookingId, ReservationLockedEventIndex, now, ct);
 
         // Step 3 – finalise (900ms)
         await Task.Delay(900, ct);
@@ -148,11 +148,12 @@ public sealed class BookingConsumer : BackgroundService
     }
 
     private static async Task PatchEventsAsync(
-        IMongoCollection<Booking> col, string bookingId, int completedCount, DateTime baseTime, CancellationToken ct)
+        IMongoCollection<Booking> col, string bookingId, int completedThroughIndex, DateTime baseTime, CancellationToken ct)
     {
         var booking = await col.Find(b => b.Id == bookingId).FirstOrDefaultAsync(ct);
         if (booking is null) return;
 
+        var completedCount = completedThroughIndex + 1;
         var currentIndex = completedCount < booking.Events.Count ? completedCount : NoCurrentEvent;
         var events = booking.Events.Select((e, i) => i < completedCount
             ? e with { Done = true, Current = false, Time = e.Time ?? baseTime.AddMilliseconds(i * 700).ToString("HH:mm:ss") }
