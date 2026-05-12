@@ -159,10 +159,9 @@ public sealed class BookingConsumer : BackgroundService
         var booking = await col.Find(b => b.Id == bookingId).FirstOrDefaultAsync(ct);
         if (booking is null) return;
 
-        var completedThroughIndex = (int)completedThroughEvent;
-        var firstIncompleteIndex = completedThroughIndex + 1;
+        var firstIncompleteIndex = (int)completedThroughEvent + 1;
         var nextCurrentEventIndex = firstIncompleteIndex < booking.Events.Count ? firstIncompleteIndex : NoCurrentEvent;
-        var events = booking.Events.Select((e, i) => i <= completedThroughIndex
+        var events = booking.Events.Select((e, i) => i < firstIncompleteIndex
             ? e with { Done = true, Current = false, Time = e.Time ?? baseTime.AddMilliseconds(i * 700).ToString("HH:mm:ss") }
             : i == nextCurrentEventIndex
                 ? e with { Current = true }
