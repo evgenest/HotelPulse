@@ -139,8 +139,12 @@ async function fetchBooking() {
     booking.value = result
     loading.value = false
 
-    // Always reconcile the history sidebar with the live API status
-    updateStatus(result.id, result.status)
+    // Only reconcile the history sidebar when the stored status changed.
+    const historyStatus =
+      bookingHistory.value.find((entry) => entry.id === result.id)?.status ?? null
+    if (historyStatus !== result.status) {
+      updateStatus(result.id, result.status)
+    }
 
     if (result.status !== 'pending') {
       // Ack the queue visualizer when first arriving at a terminal state
