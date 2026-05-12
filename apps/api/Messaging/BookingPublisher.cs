@@ -11,29 +11,45 @@ public sealed class BookingPublisher : IAsyncDisposable
     private const string QueueName = "bookings.created";
     private const string RoutingKey = "booking.created";
 
-    private readonly IConnection _connection;
-    private readonly IChannel _channel;
+    private readonly ConnectionFactory _factory;
+    private readonly SemaphoreSlim _initLock = new(1, 1);
 
-    private BookingPublisher(IConnection connection, IChannel channel)
+    private IConnection? _connection;
+    private IChannel? _channel;
+
+    public BookingPublisher(ConnectionFactory factory)
     {
-        _connection = connection;
-        _channel = channel;
+        _factory = factory;
     }
 
-    public static async Task<BookingPublisher> CreateAsync(ConnectionFactory factory, CancellationToken ct = default)
+    private async Task<IChannel> EnsureChannelAsync(CancellationToken ct)
     {
-        var connection = await factory.CreateConnectionAsync(ct);
-        var channel = await connection.CreateChannelAsync(cancellationToken: ct);
+        if (_channel is { IsOpen: true }) return _channel;
 
-        await channel.ExchangeDeclareAsync(ExchangeName, ExchangeType.Topic, durable: true, cancellationToken: ct);
-        await channel.QueueDeclareAsync(QueueName, durable: true, exclusive: false, autoDelete: false, cancellationToken: ct);
-        await channel.QueueBindAsync(QueueName, ExchangeName, RoutingKey, cancellationToken: ct);
+        await _initLock.WaitAsync(ct);
+        try
+        {
+            if (_channel is { IsOpen: true }) return _channel;
 
-        return new BookingPublisher(connection, channel);
+            _connection = await _factory.CreateConnectionAsync(ct);
+            _channel = await _connection.CreateChannelAsync(cancellationToken: ct);
+
+            await _channel.ExchangeDeclareAsync(ExchangeName, ExchangeType.Topic, durable: true, cancellationToken: ct);
+            await _channel.QueueDeclareAsync(QueueName, durable: true, exclusive: false, autoDelete: false, cancellationToken: ct);
+            await _channel.QueueBindAsync(QueueName, ExchangeName, RoutingKey, cancellationToken: ct);
+
+            return _channel;
+        }
+        finally
+        {
+            _initLock.Release();
+        }
     }
 
     public async Task PublishAsync(BookingMessage message, CancellationToken ct = default)
     {
+        var channel = await EnsureChannelAsync(ct);
+
         var json = JsonSerializer.Serialize(message, new JsonSerializerOptions
         {
             PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
@@ -46,14 +62,13 @@ public sealed class BookingPublisher : IAsyncDisposable
             ContentType = "application/json",
         };
 
-        await _channel.BasicPublishAsync(ExchangeName, RoutingKey, mandatory: false, basicProperties: props, body: body, cancellationToken: ct);
+        await channel.BasicPublishAsync(ExchangeName, RoutingKey, mandatory: false, basicProperties: props, body: body, cancellationToken: ct);
     }
 
     public async ValueTask DisposeAsync()
     {
-        await _channel.CloseAsync();
-        await _connection.CloseAsync();
-        await _channel.DisposeAsync();
-        await _connection.DisposeAsync();
+        if (_channel is not null) await _channel.DisposeAsync();
+        if (_connection is not null) await _connection.DisposeAsync();
+        _initLock.Dispose();
     }
 }

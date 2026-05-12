@@ -32,9 +32,11 @@ builder.Services.AddSingleton(bookingsCol);
 
 // RabbitMQ
 var rabbitUri = Environment.GetEnvironmentVariable("RABBITMQ_URI") ?? "amqp://guest:guest@localhost:5672/";
-var rabbitFactory = new ConnectionFactory { Uri = new Uri(rabbitUri) };
-var bookingPublisher = await BookingPublisher.CreateAsync(rabbitFactory);
-builder.Services.AddSingleton(bookingPublisher);
+builder.Services.AddSingleton<BookingPublisher>(_ =>
+{
+    var factory = new ConnectionFactory { Uri = new Uri(rabbitUri) };
+    return new BookingPublisher(factory);
+});
 
 // CORS – allow frontend origin
 builder.Services.AddCors(opt =>
