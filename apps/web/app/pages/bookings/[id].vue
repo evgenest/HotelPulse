@@ -176,7 +176,7 @@ function stopPolling() {
   }
 }
 
-watch(historyOpen, (isOpen) => {
+const stopHistoryOpenWatch = watch(historyOpen, (isOpen) => {
   if (isOpen) {
     void refreshHistory({ force: true })
   }
@@ -194,6 +194,7 @@ onMounted(async () => {
 })
 
 onUnmounted(() => {
+  stopHistoryOpenWatch()
   stopPolling()
   stopHistorySync?.()
 })

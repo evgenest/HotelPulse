@@ -198,7 +198,7 @@ async function handleBookingSubmit(data: {
   }
 }
 
-watch(historyOpen, (isOpen) => {
+const stopHistoryOpenWatch = watch(historyOpen, (isOpen) => {
   if (isOpen) {
     void refreshHistory({ force: true })
   }
@@ -212,6 +212,7 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
+  stopHistoryOpenWatch()
   stopHistorySync?.()
 })
 </script>

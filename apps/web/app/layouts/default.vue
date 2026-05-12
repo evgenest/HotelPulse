@@ -38,7 +38,7 @@ const currentBookingId = computed(() =>
   route.name === 'bookings-id' ? String(route.params.id) : null
 )
 
-watch(historyOpen, (isOpen) => {
+const stopHistoryOpenWatch = watch(historyOpen, (isOpen) => {
   if (isOpen) {
     void refreshHistory({ force: true })
   }
@@ -52,6 +52,7 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
+  stopHistoryOpenWatch()
   stopHistorySync?.()
 })
 </script>
