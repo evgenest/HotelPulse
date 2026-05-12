@@ -145,7 +145,7 @@ async function fetchBooking() {
     if (result.status !== 'pending') {
       // Ack the queue visualizer when first arriving at a terminal state
       // (i.e. transition from null or pending → terminal)
-      if (prevStatus !== 'confirmed' && prevStatus !== 'rejected') {
+      if (prevStatus === null || prevStatus === 'pending') {
         onAck()
       }
       stopPolling()
