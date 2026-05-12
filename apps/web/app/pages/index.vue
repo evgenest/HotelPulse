@@ -85,10 +85,11 @@ import { useBookingStore } from '~/composables/useBookingStore'
 definePageMeta({ layout: false })
 
 const { queueState } = useQueueStore()
-const { bookingHistory, clearHistory } = useBookingStore()
+const { bookingHistory, clearHistory, startHistorySync } = useBookingStore()
 
 const historyOpen = ref(false)
 const hotelsRef = ref<HTMLElement | null>(null)
+let stopHistorySync: (() => void) | null = null
 
 const config = useRuntimeConfig()
 const { data: hotels, pending, refresh } = await useAsyncData('hotels', () =>
@@ -98,4 +99,12 @@ const { data: hotels, pending, refresh } = await useAsyncData('hotels', () =>
 function scrollToHotels() {
   hotelsRef.value?.scrollIntoView({ behavior: 'smooth' })
 }
+
+onMounted(() => {
+  stopHistorySync = startHistorySync({ immediate: true })
+})
+
+onUnmounted(() => {
+  stopHistorySync?.()
+})
 </script>
