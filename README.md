@@ -135,7 +135,9 @@ pnpm install
 pnpm run dev
 ```
 
-### Option 3 — Kubernetes (kind)
+### Option 3 — Kubernetes (`kind` or `minikube`)
+
+#### Option 3A — `kind`
 
 ```bash
 # 1. Build images
@@ -158,6 +160,32 @@ kubectl port-forward svc/api 8080:8080 -n hotelpulse &
 kubectl port-forward svc/web 3000:3000 -n hotelpulse &
 open http://localhost:3000
 ```
+
+#### Option 3B — `minikube`
+
+```bash
+# 1. Start the cluster
+minikube start
+
+# 2. Point Docker CLI to the daemon inside minikube
+eval $(minikube docker-env)
+
+# 3. Build images inside minikube
+docker build -t hotelpulse-api:dev    ./apps/api
+docker build -t hotelpulse-worker:dev ./apps/worker
+docker build -t hotelpulse-web:dev    ./apps/web
+
+# 4. Deploy
+kubectl apply -f k8s/
+kubectl get pods -n hotelpulse          # wait until all Running
+
+# 5. Access
+kubectl port-forward svc/api 8080:8080 -n hotelpulse &
+kubectl port-forward svc/web 3000:3000 -n hotelpulse &
+open http://localhost:3000
+```
+
+> If pods get stuck in `ImagePullBackOff` after deploy, the images were most likely built outside the `minikube` Docker daemon. Run `eval $(minikube docker-env)` again and rebuild all three images.
 
 If your cluster already has a PVC with MongoDB 7 data, use a fresh PVC or a fresh namespace before applying `mongo:8`.
 A clean PVC is the simplest upgrade path here; the hotel catalog will be reseeded on API startup.
@@ -241,7 +269,10 @@ winget install Kubernetes.minikube
 winget install Kubernetes.kubectl
 ```
 
-After installing, follow **Option 3 — Kubernetes (kind)** above for the full build → load → deploy → port-forward steps.
+After installing, use one of the scenarios above:
+
+- **`kind`**: build images → `kind create cluster` → `kind load docker-image ...` → `kubectl apply -f k8s/`
+- **`minikube`**: `minikube start` → `eval $(minikube docker-env)` → build images → `kubectl apply -f k8s/`
 
 > **Windows note:** run the `kind`/`minikube`, `kubectl`, `docker build`, and `docker compose` commands in **Git Bash** or **WSL** — the backgrounding operator `&` and the `open` command are not supported in PowerShell or CMD. Replace `open http://localhost:3000` with `start http://localhost:3000` (CMD) or just open the URL in your browser manually.
 

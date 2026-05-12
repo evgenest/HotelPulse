@@ -135,7 +135,9 @@ pnpm install
 pnpm run dev
 ```
 
-### Вариант 3 — Kubernetes (kind)
+### Вариант 3 — Kubernetes (`kind` или `minikube`)
+
+#### Вариант 3A — `kind`
 
 ```bash
 # 1. Сборка образов
@@ -158,6 +160,32 @@ kubectl port-forward svc/api 8080:8080 -n hotelpulse &
 kubectl port-forward svc/web 3000:3000 -n hotelpulse &
 open http://localhost:3000
 ```
+
+#### Вариант 3B — `minikube`
+
+```bash
+# 1. Запускаем кластер
+minikube start
+
+# 2. Переключаем Docker CLI на daemon внутри minikube
+eval $(minikube docker-env)
+
+# 3. Сборка образов внутри minikube
+docker build -t hotelpulse-api:dev    ./apps/api
+docker build -t hotelpulse-worker:dev ./apps/worker
+docker build -t hotelpulse-web:dev    ./apps/web
+
+# 4. Деплой
+kubectl apply -f k8s/
+kubectl get pods -n hotelpulse          # ждём пока все Running
+
+# 5. Доступ
+kubectl port-forward svc/api 8080:8080 -n hotelpulse &
+kubectl port-forward svc/web 3000:3000 -n hotelpulse &
+open http://localhost:3000
+```
+
+> Если после деплоя Pod'ы застряли в `ImagePullBackOff`, скорее всего, образы были собраны не внутри Docker daemon'а `minikube`. В этом случае снова выполни `eval $(minikube docker-env)` и пересобери все три образа.
 
 Если в кластере уже есть PVC с данными MongoDB 7, перед применением `mongo:8` используйте свежий PVC или новый namespace.
 Самый простой путь здесь — чистый PVC; каталог отелей будет заново заполнен при старте API.
@@ -243,7 +271,10 @@ winget install Kubernetes.minikube
 winget install Kubernetes.kubectl
 ```
 
-После установки следуй шагам **«Вариант 3 — Kubernetes (kind)»** выше: сборка образов, создание кластера, `kubectl apply -f k8s/`, port-forward.
+После установки используй один из сценариев выше:
+
+- **`kind`**: сборка образов → `kind create cluster` → `kind load docker-image ...` → `kubectl apply -f k8s/`
+- **`minikube`**: `minikube start` → `eval $(minikube docker-env)` → сборка образов → `kubectl apply -f k8s/`
 
 > **Windows:** команды `kind`/`minikube`, `kubectl`, `docker build` и `docker compose` выполняй в **Git Bash** или **WSL** — оператор `&` и команда `open` не поддерживаются в PowerShell/CMD. Вместо `open http://localhost:3000` используй `start http://localhost:3000` (CMD) или просто открой ссылку в браузере вручную.
 

@@ -113,8 +113,10 @@ Check the `depends_on` + health checks in `docker-compose.yml` — the API and W
 ### Step 9 — Kubernetes (2-3 h)
 
 #### Prerequisites
-- `kind` installed: `winget install Kubernetes.kind` (or `brew install kind` on Mac)
 - `kubectl` installed and configured
+- One of the local Kubernetes options:
+  - `kind`: `winget install Kubernetes.kind` (Windows) or `brew install kind` (Mac)
+  - `minikube`: `winget install Kubernetes.minikube` (Windows) or `brew install minikube` (Mac)
 
 #### Manifest overview
 
@@ -128,7 +130,8 @@ Check the `depends_on` + health checks in `docker-compose.yml` — the API and W
 | `web.yaml` | Deployment + Service | Serves the Nuxt SPA |
 | `ingress.yaml` | Ingress | Routes `/api/*` to api, `/` to web |
 
-#### Deploy commands
+#### Deploy commands with `kind`
+
 ```bash
 # Build and load images
 docker build -t hotelpulse-api:dev    ./apps/api
@@ -146,6 +149,30 @@ kubectl apply -f k8s/
 kubectl get pods -n hotelpulse
 kubectl get services -n hotelpulse
 ```
+
+#### Deploy commands with `minikube`
+
+```bash
+# Start the cluster
+minikube start
+
+# Point Docker CLI to the daemon inside minikube
+eval $(minikube docker-env)
+
+# Build images inside minikube
+docker build -t hotelpulse-api:dev    ./apps/api
+docker build -t hotelpulse-worker:dev ./apps/worker
+docker build -t hotelpulse-web:dev    ./apps/web
+
+# Deploy
+kubectl apply -f k8s/
+
+# Check status
+kubectl get pods -n hotelpulse
+kubectl get services -n hotelpulse
+```
+
+> If pods fail to start and show `ImagePullBackOff`, the images were most likely built outside the `minikube` environment. Run `eval $(minikube docker-env)` again and rebuild the images.
 
 #### Access the app
 ```bash
