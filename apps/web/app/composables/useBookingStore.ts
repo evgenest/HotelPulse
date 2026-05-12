@@ -58,7 +58,8 @@ function toHistoryEntry(booking: Booking, previous: HistoryEntry): HistoryEntry 
 }
 
 function sameEntry(a: HistoryEntry, b: HistoryEntry) {
-  return a.hotelId === b.hotelId
+  return a.id === b.id
+    && a.hotelId === b.hotelId
     && a.hotelName === b.hotelName
     && a.roomType === b.roomType
     && a.status === b.status
