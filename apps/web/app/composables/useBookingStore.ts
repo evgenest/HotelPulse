@@ -50,8 +50,9 @@ if (import.meta.client) {
   bookingHistory.value = loadFromStorage()
 }
 
-function toHistoryEntry(booking: Booking): HistoryEntry {
+function toHistoryEntry(booking: Booking, previous?: HistoryEntry): HistoryEntry {
   return {
+    ...previous,
     id: booking.id,
     hotelId: booking.hotelId,
     hotelName: booking.hotelName,
@@ -83,6 +84,16 @@ function sameEntry(a: HistoryEntry, b: HistoryEntry) {
     && a.createdAt === b.createdAt
 }
 
+function sameHistoryEntries(a: HistoryEntry[], b: HistoryEntry[]) {
+  if (a.length !== b.length) return false
+
+  const byId = new Map(a.map((entry) => [entry.id, entry]))
+  return b.every((entry, index) => {
+    const previous = byId.get(entry.id)
+    return previous !== undefined && a[index]?.id === entry.id && sameEntry(previous, entry)
+  })
+}
+
 async function refreshHistoryFromApi(apiBase: string, force = false) {
   if (import.meta.server) return
 
@@ -94,11 +105,12 @@ async function refreshHistoryFromApi(apiBase: string, force = false) {
     .then((bookings) => {
       lastRefreshAt = Date.now()
 
-      const next = bookings.slice(0, MAX_HISTORY).map(toHistoryEntry)
-      const changed = next.length !== bookingHistory.value.length
-        || next.some((entry, index) => !sameEntry(entry, bookingHistory.value[index]))
+      const previousById = new Map(bookingHistory.value.map((entry) => [entry.id, entry]))
+      const next = bookings
+        .slice(0, MAX_HISTORY)
+        .map((booking) => toHistoryEntry(booking, previousById.get(booking.id)))
 
-      if (changed) {
+      if (!sameHistoryEntries(bookingHistory.value, next)) {
         bookingHistory.value = next
         saveToStorage(next)
       }
