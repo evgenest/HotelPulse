@@ -111,11 +111,12 @@ definePageMeta({ layout: false })
 const route = useRoute()
 const config = useRuntimeConfig()
 const { queueState, onAck } = useQueueStore()
-const { bookingHistory, updateStatus, clearHistory } = useBookingStore()
+const { bookingHistory, updateStatus, clearHistory, startHistorySync } = useBookingStore()
 
 const historyOpen = ref(false)
 const booking = ref<Booking | null>(null)
 const loading = ref(true)
+let stopHistorySync: (() => void) | null = null
 
 const firstName = computed(() => booking.value?.guestName.split(' ')[0] ?? '')
 
@@ -173,13 +174,17 @@ function stopPolling() {
 }
 
 onMounted(async () => {
+  stopHistorySync = startHistorySync({ immediate: true })
   await fetchBooking()
   if (booking.value?.status === 'pending') {
     pollInterval = setInterval(fetchBooking, 1500)
   }
 })
 
-onUnmounted(stopPolling)
+onUnmounted(() => {
+  stopPolling()
+  stopHistorySync?.()
+})
 
 async function retry() {
   if (!booking.value) return

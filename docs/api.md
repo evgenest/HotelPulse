@@ -59,6 +59,30 @@ Creates a booking and publishes a message to RabbitMQ.
 { "id": "bkg_a3f9c12d8e4b", "status": "pending" }
 ```
 
+#### `GET /api/bookings?ids={id1},{id2}`
+Returns the current state of up to 20 known bookings, preserving the requested order. The web history rail uses this endpoint to reconcile locally stored booking history with MongoDB-backed booking data without issuing one request per entry.
+
+**Response `200 OK`**
+```json
+[
+  {
+    "id": "bkg_a3f9c12d8e4b",
+    "hotelId": "h_alpina",
+    "hotelName": "Hôtel Alpina",
+    "roomId": "r2",
+    "roomType": "Matterhorn View King",
+    "guestName": "Anna Schmidt",
+    "checkIn": "2026-06-01",
+    "checkOut": "2026-06-05",
+    "nights": 4,
+    "total": 1920,
+    "status": "pending",
+    "createdAt": "2026-05-11T14:32:00Z",
+    "events": []
+  }
+]
+```
+
 #### `GET /api/bookings/{id}`
 Returns the current state of a booking. Poll this endpoint to detect confirmation.
 

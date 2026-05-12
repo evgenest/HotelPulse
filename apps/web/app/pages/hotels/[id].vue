@@ -139,10 +139,11 @@ definePageMeta({ layout: false })
 const route = useRoute()
 const config = useRuntimeConfig()
 const { queueState, onPublish } = useQueueStore()
-const { bookingHistory, addBooking, clearHistory } = useBookingStore()
+const { bookingHistory, addBooking, clearHistory, startHistorySync } = useBookingStore()
 
 const historyOpen = ref(false)
 const showForm = ref(false)
+let stopHistorySync: (() => void) | null = null
 
 const { data: hotel } = await useAsyncData(`hotel-${route.params.id}`, () =>
   $fetch<Hotel>(`${config.public.apiBase}/api/hotels/${route.params.id}`)
@@ -192,4 +193,12 @@ async function handleBookingSubmit(data: {
     alert('Booking failed. Is the API running?')
   }
 }
+
+onMounted(() => {
+  stopHistorySync = startHistorySync({ immediate: true })
+})
+
+onUnmounted(() => {
+  stopHistorySync?.()
+})
 </script>
