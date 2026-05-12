@@ -157,12 +157,16 @@ async function fetchBooking() {
     } else if (prevStatus !== null && prevStatus !== 'pending') {
       // Out-of-band change: booking reverted from terminal back to pending —
       // restart polling so the page tracks the new status
-      if (pollInterval === null) {
-        pollInterval = setInterval(fetchBooking, 1500)
-      }
+      startPolling()
     }
   } catch {
     loading.value = false
+  }
+}
+
+function startPolling() {
+  if (pollInterval === null) {
+    pollInterval = setInterval(fetchBooking, 1500)
   }
 }
 
@@ -177,7 +181,7 @@ onMounted(async () => {
   stopHistorySync = startHistorySync({ immediate: true })
   await fetchBooking()
   if (booking.value?.status === 'pending') {
-    pollInterval = setInterval(fetchBooking, 1500)
+    startPolling()
   }
 })
 

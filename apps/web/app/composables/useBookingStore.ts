@@ -89,7 +89,9 @@ async function refreshHistoryFromApi(apiBase: string, force = false) {
         if (!booking) return entry
 
         const updated = toHistoryEntry(booking, entry)
-        changed ||= !sameEntry(entry, updated)
+        if (!sameEntry(entry, updated)) {
+          changed = true
+        }
         return updated
       })
 
