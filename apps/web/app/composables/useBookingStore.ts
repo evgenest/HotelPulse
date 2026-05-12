@@ -11,10 +11,15 @@ export interface HistoryEntry {
   id: string
   hotelId: string
   hotelName: string
+  roomId?: string
   roomType: string
+  guestName?: string
   status: string
   checkIn: string
   checkOut: string
+  nights?: number
+  total?: number
+  createdAt?: string
 }
 
 function loadFromStorage(): HistoryEntry[] {
@@ -50,10 +55,15 @@ function toHistoryEntry(booking: Booking, previous: HistoryEntry): HistoryEntry 
     ...previous,
     hotelId: booking.hotelId,
     hotelName: booking.hotelName,
+    roomId: booking.roomId,
     roomType: booking.roomType,
+    guestName: booking.guestName,
     status: booking.status,
     checkIn: booking.checkIn,
     checkOut: booking.checkOut,
+    nights: booking.nights,
+    total: booking.total,
+    createdAt: booking.createdAt,
   }
 }
 
@@ -62,10 +72,15 @@ function sameEntry(a: HistoryEntry, b: HistoryEntry) {
 
   return a.hotelId === b.hotelId
     && a.hotelName === b.hotelName
+    && a.roomId === b.roomId
     && a.roomType === b.roomType
+    && a.guestName === b.guestName
     && a.status === b.status
     && a.checkIn === b.checkIn
     && a.checkOut === b.checkOut
+    && a.nights === b.nights
+    && a.total === b.total
+    && a.createdAt === b.createdAt
 }
 
 async function refreshHistoryFromApi(apiBase: string, force = false) {

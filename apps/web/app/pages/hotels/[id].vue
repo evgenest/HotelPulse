@@ -181,10 +181,14 @@ async function handleBookingSubmit(data: {
       id: result.id,
       hotelId: hotel.value.id,
       hotelName: hotel.value.name,
+      roomId: selectedRoom.value.id,
       roomType: selectedRoom.value.type,
+      guestName: data.guestName,
       status: 'pending',
       checkIn: data.checkIn,
       checkOut: data.checkOut,
+      nights: data.nights,
+      total: data.total,
     })
 
     navigateTo(`/bookings/${result.id}`)
