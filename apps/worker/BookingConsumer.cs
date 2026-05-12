@@ -51,19 +51,19 @@ public sealed class BookingConsumer : BackgroundService
     private async Task RunConsumerLoop(IMongoCollection<Booking> bookings, CancellationToken ct)
     {
         var factory = new ConnectionFactory { Uri = new Uri(_rabbitUri) };
-        using var connection = factory.CreateConnection();
-        using var channel = connection.CreateModel();
+        await using var connection = await factory.CreateConnectionAsync(ct);
+        await using var channel = await connection.CreateChannelAsync(cancellationToken: ct);
 
-        channel.ExchangeDeclare("hotelpulse", ExchangeType.Topic, durable: true);
-        channel.QueueDeclare("bookings.created", durable: true, exclusive: false, autoDelete: false);
-        channel.QueueBind("bookings.created", "hotelpulse", "booking.created");
-        channel.BasicQos(0, 1, false); // process one message at a time
+        await channel.ExchangeDeclareAsync("hotelpulse", ExchangeType.Topic, durable: true, cancellationToken: ct);
+        await channel.QueueDeclareAsync("bookings.created", durable: true, exclusive: false, autoDelete: false, cancellationToken: ct);
+        await channel.QueueBindAsync("bookings.created", "hotelpulse", "booking.created", cancellationToken: ct);
+        await channel.BasicQosAsync(0, 1, false, ct); // process one message at a time
 
         var tcs = new TaskCompletionSource();
-        ct.Register(() => tcs.TrySetCanceled());
+        await using var registration = ct.Register(() => tcs.TrySetCanceled());
 
-        var consumer = new EventingBasicConsumer(channel);
-        consumer.Received += async (_, ea) =>
+        var consumer = new AsyncEventingBasicConsumer(channel);
+        consumer.ReceivedAsync += async (_, ea) =>
         {
             try
             {
@@ -71,21 +71,25 @@ public sealed class BookingConsumer : BackgroundService
                 var msg = JsonSerializer.Deserialize<BookingMessage>(json,
                     new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
 
-                if (msg is null) { channel.BasicNack(ea.DeliveryTag, false, false); return; }
+                if (msg is null)
+                {
+                    await channel.BasicNackAsync(ea.DeliveryTag, false, false, ct);
+                    return;
+                }
 
                 _logger.LogInformation("[worker] Processing booking {Id}", msg.BookingId);
                 await ProcessBookingAsync(bookings, msg, ct);
 
-                channel.BasicAck(ea.DeliveryTag, false);
+                await channel.BasicAckAsync(ea.DeliveryTag, false, ct);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error processing message");
-                channel.BasicNack(ea.DeliveryTag, false, requeue: false);
+                await channel.BasicNackAsync(ea.DeliveryTag, false, requeue: false, ct);
             }
         };
 
-        channel.BasicConsume("bookings.created", autoAck: false, consumer);
+        await channel.BasicConsumeAsync("bookings.created", autoAck: false, consumer, ct);
         _logger.LogInformation("[worker] Consuming from bookings.created");
 
         await tcs.Task; // wait until cancelled

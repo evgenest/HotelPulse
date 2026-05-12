@@ -32,11 +32,9 @@ builder.Services.AddSingleton(bookingsCol);
 
 // RabbitMQ
 var rabbitUri = Environment.GetEnvironmentVariable("RABBITMQ_URI") ?? "amqp://guest:guest@localhost:5672/";
-builder.Services.AddSingleton<BookingPublisher>(_ =>
-{
-    var factory = new ConnectionFactory { Uri = new Uri(rabbitUri) };
-    return new BookingPublisher(factory);
-});
+var rabbitFactory = new ConnectionFactory { Uri = new Uri(rabbitUri) };
+var bookingPublisher = await BookingPublisher.CreateAsync(rabbitFactory);
+builder.Services.AddSingleton(bookingPublisher);
 
 // CORS – allow frontend origin
 builder.Services.AddCors(opt =>
@@ -103,7 +101,7 @@ app.MapPost("/api/bookings", async (
 
     await bookings.InsertOneAsync(booking);
 
-    try { publisher.Publish(new BookingMessage(id, hotel.Id, room.Id, now)); }
+    try { await publisher.PublishAsync(new BookingMessage(id, hotel.Id, room.Id, now)); }
     catch (Exception ex) { Console.Error.WriteLine($"[RabbitMQ] Publish failed: {ex.Message}"); }
 
     return Results.Accepted($"/api/bookings/{id}", new { id, status = "pending" });

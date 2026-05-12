@@ -5,26 +5,34 @@ using System.Text.Json;
 
 namespace HotelPulse.Api.Messaging;
 
-public sealed class BookingPublisher : IDisposable
+public sealed class BookingPublisher : IAsyncDisposable
 {
     private const string ExchangeName = "hotelpulse";
     private const string QueueName = "bookings.created";
     private const string RoutingKey = "booking.created";
 
     private readonly IConnection _connection;
-    private readonly IModel _channel;
+    private readonly IChannel _channel;
 
-    public BookingPublisher(ConnectionFactory factory)
+    private BookingPublisher(IConnection connection, IChannel channel)
     {
-        _connection = factory.CreateConnection();
-        _channel = _connection.CreateModel();
-
-        _channel.ExchangeDeclare(ExchangeName, ExchangeType.Topic, durable: true);
-        _channel.QueueDeclare(QueueName, durable: true, exclusive: false, autoDelete: false);
-        _channel.QueueBind(QueueName, ExchangeName, RoutingKey);
+        _connection = connection;
+        _channel = channel;
     }
 
-    public void Publish(BookingMessage message)
+    public static async Task<BookingPublisher> CreateAsync(ConnectionFactory factory, CancellationToken ct = default)
+    {
+        var connection = await factory.CreateConnectionAsync(ct);
+        var channel = await connection.CreateChannelAsync(cancellationToken: ct);
+
+        await channel.ExchangeDeclareAsync(ExchangeName, ExchangeType.Topic, durable: true, cancellationToken: ct);
+        await channel.QueueDeclareAsync(QueueName, durable: true, exclusive: false, autoDelete: false, cancellationToken: ct);
+        await channel.QueueBindAsync(QueueName, ExchangeName, RoutingKey, cancellationToken: ct);
+
+        return new BookingPublisher(connection, channel);
+    }
+
+    public async Task PublishAsync(BookingMessage message, CancellationToken ct = default)
     {
         var json = JsonSerializer.Serialize(message, new JsonSerializerOptions
         {
@@ -32,16 +40,20 @@ public sealed class BookingPublisher : IDisposable
         });
         var body = Encoding.UTF8.GetBytes(json);
 
-        var props = _channel.CreateBasicProperties();
-        props.Persistent = true;
-        props.ContentType = "application/json";
+        var props = new BasicProperties
+        {
+            Persistent = true,
+            ContentType = "application/json",
+        };
 
-        _channel.BasicPublish(ExchangeName, RoutingKey, props, body);
+        await _channel.BasicPublishAsync(ExchangeName, RoutingKey, mandatory: false, basicProperties: props, body: body, cancellationToken: ct);
     }
 
-    public void Dispose()
+    public async ValueTask DisposeAsync()
     {
-        _channel.Close();
-        _connection.Close();
+        await _channel.CloseAsync();
+        await _connection.CloseAsync();
+        await _channel.DisposeAsync();
+        await _connection.DisposeAsync();
     }
 }
