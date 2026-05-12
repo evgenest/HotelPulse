@@ -1,5 +1,5 @@
 <template>
-  <div class="shell">
+  <div :class="['shell', historyOpen && 'with-rail']">
     <div>
       <AppNavbar
         :queue-state="queueState"
