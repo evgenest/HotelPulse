@@ -108,6 +108,8 @@ import type { Booking } from '~/composables/useApi'
 
 definePageMeta({ layout: false })
 
+const BOOKING_POLL_INTERVAL_MS = 1500
+
 const route = useRoute()
 const config = useRuntimeConfig()
 const { queueState, onAck } = useQueueStore()
@@ -163,7 +165,7 @@ async function fetchBooking() {
 
 function startPolling() {
   if (pollInterval === null) {
-    pollInterval = setInterval(fetchBooking, 1500)
+    pollInterval = setInterval(fetchBooking, BOOKING_POLL_INTERVAL_MS)
   }
 }
 
