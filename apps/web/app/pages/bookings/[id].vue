@@ -108,7 +108,8 @@ import type { Booking } from '~/composables/useApi'
 
 definePageMeta({ layout: false })
 
-const BOOKING_POLL_INTERVAL_MS = 1500
+const BOOKING_PENDING_POLL_INTERVAL_MS = 1500
+const BOOKING_REVALIDATE_INTERVAL_MS = 5000
 
 const route = useRoute()
 const config = useRuntimeConfig()
@@ -132,6 +133,11 @@ const pendingStage = computed(() => {
 
 // Polling
 let pollInterval: ReturnType<typeof setInterval> | null = null
+let pollIntervalMs: number | null = null
+
+function shouldSyncActiveBooking() {
+  return import.meta.client ? document.visibilityState === 'visible' : true
+}
 
 async function fetchBooking() {
   try {
@@ -152,21 +158,29 @@ async function fetchBooking() {
       if (prevStatus === null || prevStatus === 'pending') {
         onAck()
       }
-      stopPolling()
-    } else if (prevStatus !== null && prevStatus !== 'pending') {
-      // Out-of-band change: booking reverted from terminal back to pending —
-      // restart polling so the page tracks the new status
-      startPolling()
     }
+
+    syncPolling(result.status)
   } catch {
     loading.value = false
   }
 }
 
-function startPolling() {
-  if (pollInterval === null) {
-    pollInterval = setInterval(fetchBooking, BOOKING_POLL_INTERVAL_MS)
+function syncPolling(status: Booking['status']) {
+  const nextIntervalMs =
+    status === 'pending' ? BOOKING_PENDING_POLL_INTERVAL_MS : BOOKING_REVALIDATE_INTERVAL_MS
+
+  if (pollInterval !== null && pollIntervalMs === nextIntervalMs) {
+    return
   }
+
+  stopPolling()
+  pollIntervalMs = nextIntervalMs
+  pollInterval = setInterval(() => {
+    if (shouldSyncActiveBooking()) {
+      void fetchBooking()
+    }
+  }, nextIntervalMs)
 }
 
 function stopPolling() {
@@ -174,6 +188,7 @@ function stopPolling() {
     clearInterval(pollInterval)
     pollInterval = null
   }
+  pollIntervalMs = null
 }
 
 const stopHistoryOpenWatch = watch(historyOpen, (isOpen) => {
@@ -182,14 +197,22 @@ const stopHistoryOpenWatch = watch(historyOpen, (isOpen) => {
   }
 })
 
+function handlePageResume() {
+  if (booking.value && shouldSyncActiveBooking()) {
+    void fetchBooking()
+  }
+}
+
 onMounted(async () => {
   stopHistorySync = startHistorySync({
     immediate: true,
     pollWhen: () => historyOpen.value,
   })
+  window.addEventListener('focus', handlePageResume)
+  document.addEventListener('visibilitychange', handlePageResume)
   await fetchBooking()
-  if (booking.value?.status === 'pending') {
-    startPolling()
+  if (booking.value) {
+    syncPolling(booking.value.status)
   }
 })
 
@@ -197,6 +220,8 @@ onUnmounted(() => {
   stopHistoryOpenWatch()
   stopPolling()
   stopHistorySync?.()
+  window.removeEventListener('focus', handlePageResume)
+  document.removeEventListener('visibilitychange', handlePageResume)
 })
 
 async function retry() {
