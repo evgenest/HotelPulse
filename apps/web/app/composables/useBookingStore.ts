@@ -51,7 +51,8 @@ if (import.meta.client) {
 }
 
 function toHistoryEntry(booking: Booking, previous?: HistoryEntry): HistoryEntry {
-  const entry = {
+  return {
+    ...(previous ?? {}),
     id: booking.id,
     hotelId: booking.hotelId,
     hotelName: booking.hotelName,
@@ -65,8 +66,6 @@ function toHistoryEntry(booking: Booking, previous?: HistoryEntry): HistoryEntry
     total: booking.total,
     createdAt: booking.createdAt,
   }
-
-  return previous ? { ...previous, ...entry } : entry
 }
 
 function sameEntry(a: HistoryEntry, b: HistoryEntry) {
