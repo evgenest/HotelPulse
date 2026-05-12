@@ -135,15 +135,26 @@ async function fetchBooking() {
     const result = await $fetch<Booking>(
       `${config.public.apiBase}/api/bookings/${route.params.id}`
     )
-    const wasTerminal = booking.value && booking.value.status !== 'pending'
+    const prevStatus = booking.value?.status ?? null
     booking.value = result
     loading.value = false
 
-    // Ack in queue visualizer and update history when status changes to terminal
-    if (!wasTerminal && result.status !== 'pending') {
-      onAck()
-      updateStatus(result.id, result.status)
+    // Always reconcile the history sidebar with the live API status
+    updateStatus(result.id, result.status)
+
+    if (result.status !== 'pending') {
+      // Ack the queue visualizer when first arriving at a terminal state
+      // (i.e. transition from null or pending → terminal)
+      if (prevStatus !== 'confirmed' && prevStatus !== 'rejected') {
+        onAck()
+      }
       stopPolling()
+    } else if (prevStatus !== null && prevStatus !== 'pending') {
+      // Out-of-band change: booking reverted from terminal back to pending —
+      // restart polling so the page tracks the new status
+      if (pollInterval === null) {
+        pollInterval = setInterval(fetchBooking, 1500)
+      }
     }
   } catch {
     loading.value = false
