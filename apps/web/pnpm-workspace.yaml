@@ -1,5 +1,6 @@
 # Delay package updates by 7 days (10080 minutes) to reduce supply-chain risk.
 minimumReleaseAge: 10080
+minimumReleaseAgeStrict: true
 
 allowBuilds:
   '@parcel/watcher': true
