@@ -151,8 +151,8 @@ kind load docker-image hotelpulse-api:dev    --name hotelpulse
 kind load docker-image hotelpulse-worker:dev --name hotelpulse
 kind load docker-image hotelpulse-web:dev    --name hotelpulse
 
-# 3. Deploy
-kubectl apply -f k8s/
+# 3. Deploy: namespace first, then the rest
+kubectl apply -f k8s/namespace.yaml && kubectl apply -f k8s/
 kubectl get pods -n hotelpulse          # wait until all Running
 
 # 4. Access
@@ -175,8 +175,8 @@ docker build -t hotelpulse-api:dev    ./apps/api
 docker build -t hotelpulse-worker:dev ./apps/worker
 docker build -t hotelpulse-web:dev    ./apps/web
 
-# 4. Deploy
-kubectl apply -f k8s/
+# 4. Deploy: namespace first, then the rest
+kubectl apply -f k8s/namespace.yaml && kubectl apply -f k8s/
 kubectl get pods -n hotelpulse          # wait until all Running
 
 # 5. Access
@@ -271,8 +271,8 @@ winget install Kubernetes.kubectl
 
 After installing, use one of the scenarios above:
 
-- **`kind`**: build images → `kind create cluster` → `kind load docker-image ...` → `kubectl apply -f k8s/`
-- **`minikube`**: `minikube start` → `eval $(minikube docker-env)` → build images → `kubectl apply -f k8s/`
+- **`kind`**: build images → `kind create cluster` → `kind load docker-image ...` → `kubectl apply -f k8s/namespace.yaml && kubectl apply -f k8s/`
+- **`minikube`**: `minikube start` → `eval $(minikube docker-env)` → build images → `kubectl apply -f k8s/namespace.yaml && kubectl apply -f k8s/`
 
 > **Windows note:** run the `kind`/`minikube`, `kubectl`, `docker build`, and `docker compose` commands in **Git Bash** or **WSL** — the backgrounding operator `&` and the `open` command are not supported in PowerShell or CMD. Replace `open http://localhost:3000` with `start http://localhost:3000` (CMD) or just open the URL in your browser manually.
 

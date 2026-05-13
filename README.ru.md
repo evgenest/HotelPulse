@@ -151,8 +151,8 @@ kind load docker-image hotelpulse-api:dev    --name hotelpulse
 kind load docker-image hotelpulse-worker:dev --name hotelpulse
 kind load docker-image hotelpulse-web:dev    --name hotelpulse
 
-# 3. Деплой
-kubectl apply -f k8s/
+# 3. Деплой: сначала namespace, затем остальные манифесты
+kubectl apply -f k8s/namespace.yaml && kubectl apply -f k8s/
 kubectl get pods -n hotelpulse          # ждём пока все Running
 
 # 4. Доступ
@@ -175,8 +175,8 @@ docker build -t hotelpulse-api:dev    ./apps/api
 docker build -t hotelpulse-worker:dev ./apps/worker
 docker build -t hotelpulse-web:dev    ./apps/web
 
-# 4. Деплой
-kubectl apply -f k8s/
+# 4. Деплой: сначала namespace, затем остальные манифесты
+kubectl apply -f k8s/namespace.yaml && kubectl apply -f k8s/
 kubectl get pods -n hotelpulse          # ждём пока все Running
 
 # 5. Доступ
@@ -273,8 +273,8 @@ winget install Kubernetes.kubectl
 
 После установки используй один из сценариев выше:
 
-- **`kind`**: сборка образов → `kind create cluster` → `kind load docker-image ...` → `kubectl apply -f k8s/`
-- **`minikube`**: `minikube start` → `eval $(minikube docker-env)` → сборка образов → `kubectl apply -f k8s/`
+- **`kind`**: сборка образов → `kind create cluster` → `kind load docker-image ...` → `kubectl apply -f k8s/namespace.yaml && kubectl apply -f k8s/`
+- **`minikube`**: `minikube start` → `eval $(minikube docker-env)` → сборка образов → `kubectl apply -f k8s/namespace.yaml && kubectl apply -f k8s/`
 
 > **Windows:** команды `kind`/`minikube`, `kubectl`, `docker build` и `docker compose` выполняй в **Git Bash** или **WSL** — оператор `&` и команда `open` не поддерживаются в PowerShell/CMD. Вместо `open http://localhost:3000` используй `start http://localhost:3000` (CMD) или просто открой ссылку в браузере вручную.
 

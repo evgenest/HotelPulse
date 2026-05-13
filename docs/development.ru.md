@@ -143,8 +143,9 @@ kind load docker-image hotelpulse-api:dev    --name hotelpulse
 kind load docker-image hotelpulse-worker:dev --name hotelpulse
 kind load docker-image hotelpulse-web:dev    --name hotelpulse
 
-# Деплой
-kubectl apply -f k8s/
+# Деплой: сначала namespace, затем остальные манифесты
+# (kubectl apply -f k8s/ отправляет все файлы одновременно — namespace может не успеть создаться)
+kubectl apply -f k8s/namespace.yaml && kubectl apply -f k8s/
 
 # Проверка статуса
 kubectl get pods -n hotelpulse
@@ -165,8 +166,8 @@ docker build -t hotelpulse-api:dev    ./apps/api
 docker build -t hotelpulse-worker:dev ./apps/worker
 docker build -t hotelpulse-web:dev    ./apps/web
 
-# Деплой
-kubectl apply -f k8s/
+# Деплой: сначала namespace, затем остальные манифесты
+kubectl apply -f k8s/namespace.yaml && kubectl apply -f k8s/
 
 # Проверка статуса
 kubectl get pods -n hotelpulse
