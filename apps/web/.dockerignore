@@ -1,0 +1,5 @@
+node_modules
+.nuxt
+.output
+.cache
+*.log

@@ -133,12 +133,13 @@ export function useBookingStore() {
   }
 
   function updateStatus(id: string, status: string) {
-    const idx = bookingHistory.value.findIndex((b) => b.id === id)
-    if (idx !== -1) {
-      if (bookingHistory.value[idx].status === status) return
-      bookingHistory.value[idx] = { ...bookingHistory.value[idx], status }
-      saveToStorage(bookingHistory.value)
-    }
+    const current = bookingHistory.value.find((entry) => entry.id === id)
+    if (!current || current.status === status) return
+    const next = bookingHistory.value.map((entry) =>
+      entry.id === id ? { ...entry, status } : entry,
+    )
+    bookingHistory.value = next
+    saveToStorage(next)
   }
 
   function clearHistory() {

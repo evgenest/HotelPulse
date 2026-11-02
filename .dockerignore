@@ -1,0 +1,14 @@
+**/.git
+**/.vs
+**/.idea
+**/bin
+**/obj
+**/node_modules
+**/.nuxt
+**/.output
+**/.cache
+**/TestResults
+**/*.user
+**/.DS_Store
+.env
+.env.local

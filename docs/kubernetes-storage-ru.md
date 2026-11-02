@@ -25,7 +25,7 @@ docker compose down -v    # контейнеры удалены, данные т
 
 ## Как устроено хранилище в этом проекте
 
-MongoDB в [`k8s/mongo.yaml`](../k8s/mongo.yaml) описана как StatefulSet с `volumeClaimTemplates`:
+PostgreSQL в [`k8s/postgres.yaml`](../k8s/postgres.yaml) описана как StatefulSet с `volumeClaimTemplates`:
 
 ```yaml
 volumeClaimTemplates:
@@ -42,7 +42,7 @@ volumeClaimTemplates:
 
 1. Создаёт **PersistentVolumeClaim (PVC)** — запрос на хранилище
 2. Под него создаётся **PersistentVolume (PV)** — сам "виртуальный диск"
-3. PV монтируется в под по пути `/data/db`
+3. PV монтируется в под по пути `/var/lib/postgresql/data`
 
 ---
 
@@ -61,7 +61,7 @@ volumeClaimTemplates:
 
 ### `kubectl delete namespace hotelpulse`
 
-Удаляет всё внутри неймспейса: поды, сервисы, PVC. Поскольку у динамически созданных томов по умолчанию стоит `reclaimPolicy: Delete`, вместе с PVC удаляется и PV — данные MongoDB стираются.
+Удаляет всё внутри неймспейса: поды, сервисы, PVC. Поскольку у динамически созданных томов по умолчанию стоит `reclaimPolicy: Delete`, вместе с PVC удаляется и PV — данные PostgreSQL стираются.
 
 ### `kind delete cluster` / `minikube delete`
 
@@ -69,7 +69,7 @@ volumeClaimTemplates:
 
 ### Итоговая таблица
 
-| Действие | Данные MongoDB |
+| Действие | Данные PostgreSQL |
 |---|---|
 | `kubectl delete namespace hotelpulse` | Удалены (политика `Delete`) |
 | `kind delete cluster` / `minikube delete` | Удалены безвозвратно |
@@ -82,15 +82,11 @@ volumeClaimTemplates:
 
 При `kind create cluster` / `minikube start` + `kubectl apply -f k8s/` ты получаешь **чистый лист**:
 
-- MongoDB пустая
+- PostgreSQL пустая
 - Данные бронирований отсутствуют
-- **Отели появятся автоматически** — API сидирует их при старте (см. `apps/api/Program.cs`)
+- **Отели появятся автоматически** — миграция `002_seed.sql` вставляет каталог при старте API
 
-Это поведение задокументировано в самом манифесте [`k8s/mongo.yaml`](../k8s/mongo.yaml):
-
-```
-the API reseeds hotels on startup
-```
+Redis не хранит постоянные данные: это кэш, и после пересоздания он пуст.
 
 ---
 
@@ -111,13 +107,13 @@ the API reseeds hotels on startup
 volumes:
   - name: data
     hostPath:
-      path: /tmp/hotelpulse-mongo   # папка на хосте
+      path: /tmp/hotelpulse-postgres   # папка на хосте
       type: DirectoryOrCreate
 ```
 
 Тогда данные выживут даже после `kubectl delete namespace`. Но **не после** `kind delete cluster` — нода с её файловой системой всё равно исчезнет.
 
-> Для учебного проекта `hostPath` не нужен — API сидирует данные автоматически.
+> `hostPath` здесь не нужен — каталог вставляют SQL-миграции.
 
 ---
 

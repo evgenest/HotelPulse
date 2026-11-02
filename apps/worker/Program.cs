@@ -1,14 +1,5 @@
-using HotelPulse.Worker;
+using HotelPulse.Infrastructure;
 
-var host = Host.CreateDefaultBuilder(args)
-    .ConfigureAppConfiguration(cfg =>
-    {
-        cfg.AddEnvironmentVariables();
-    })
-    .ConfigureServices(services =>
-    {
-        services.AddHostedService<BookingConsumer>();
-    })
-    .Build();
-
-await host.RunAsync();
+var builder = Host.CreateApplicationBuilder(args);
+builder.Services.AddHotelPulse(builder.Configuration, HotelPulseRole.Worker);
+await builder.Build().RunAsync();

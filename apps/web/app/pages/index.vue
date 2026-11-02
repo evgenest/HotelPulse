@@ -61,7 +61,7 @@
         <div v-else class="empty-state">
           <div class="h-3">Could not load hotels</div>
           <div style="margin-top:8px;font-size:13px">Make sure the API is running on port 8080.</div>
-          <button class="btn btn-primary" style="margin-top:16px" @click="refresh">Retry</button>
+          <button class="btn btn-primary" style="margin-top:16px" @click="retryHotels">Retry</button>
         </div>
       </main>
     </div>
@@ -95,6 +95,10 @@ const config = useRuntimeConfig()
 const { data: hotels, pending, refresh } = await useAsyncData('hotels', () =>
   $fetch<import('~/composables/useApi').Hotel[]>(`${config.public.apiBase}/api/hotels`)
 )
+
+function retryHotels() {
+  void refresh()
+}
 
 function scrollToHotels() {
   hotelsRef.value?.scrollIntoView({ behavior: 'smooth' })

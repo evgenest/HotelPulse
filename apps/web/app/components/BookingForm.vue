@@ -52,7 +52,7 @@
         <button
           type="submit"
           class="btn btn-primary"
-          :disabled="submitting || !guestName.trim()"
+          :disabled="submitting || !guestName.trim() || nights < 1"
         >
           <span v-if="submitting" class="spinner" />
           {{ submitting ? 'Publishing…' : 'Confirm booking' }}
@@ -81,9 +81,9 @@ const checkOut = ref(fmt(addDays(today, 17)))
 const submitting = ref(false)
 
 const nights = computed(() =>
-  Math.max(1, Math.round((new Date(checkOut.value).getTime() - new Date(checkIn.value).getTime()) / 86400000))
+  Math.round((new Date(checkOut.value).getTime() - new Date(checkIn.value).getTime()) / 86400000)
 )
-const total = computed(() => nights.value * props.room.price)
+const total = computed(() => Math.max(0, nights.value) * props.room.price)
 
 function handleSubmit() {
   if (!guestName.value.trim()) return

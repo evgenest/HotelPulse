@@ -10,8 +10,8 @@
 **/.output/
 **/.cache/
 
-# Docker
-.dockerignore
+# Local browser snapshots
+.playwright-mcp/
 
 # Env
 .env

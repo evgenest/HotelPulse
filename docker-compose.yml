@@ -1,20 +1,33 @@
 services:
-  mongo:
-    image: mongo:8
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: hotelpulse
+      POSTGRES_PASSWORD: hotelpulse
+      POSTGRES_DB: hotelpulse
     ports:
-      - "27017:27017"
+      - "5432:5432"
     volumes:
-      # If you are upgrading an existing local setup from MongoDB 7,
-      # recreate this volume before the first `mongo:8` start (`docker compose down -v`).
-      # The API seeds the hotels collection on startup, so the demo recovers cleanly on a fresh volume.
-      - mongo_data:/data/db
+      - postgres_data:/var/lib/postgresql/data
     networks:
       - hotelpulse
     healthcheck:
-      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
-      interval: 10s
+      test: ["CMD-SHELL", "pg_isready -U hotelpulse -d hotelpulse"]
+      interval: 5s
       timeout: 5s
-      retries: 5
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    networks:
+      - hotelpulse
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
 
   rabbitmq:
     image: rabbitmq:4-management
@@ -22,42 +35,54 @@ services:
       - "5672:5672"
       - "15672:15672"
     environment:
-      RABBITMQ_DEFAULT_USER: guest
-      RABBITMQ_DEFAULT_PASS: guest
+      RABBITMQ_DEFAULT_USER: hotelpulse
+      RABBITMQ_DEFAULT_PASS: hotelpulse
     networks:
       - hotelpulse
     healthcheck:
       test: ["CMD", "rabbitmq-diagnostics", "check_port_connectivity"]
       interval: 10s
       timeout: 5s
-      retries: 10
+      retries: 20
 
   api:
-    build: ./apps/api
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
     ports:
       - "8080:8080"
     environment:
       ASPNETCORE_URLS: http://+:8080
-      MONGO_URI: mongodb://mongo:27017
-      RABBITMQ_URI: amqp://guest:guest@rabbitmq:5672/
+      POSTGRES_URI: Host=postgres;Port=5432;Database=hotelpulse;Username=hotelpulse;Password=hotelpulse
+      REDIS_URI: redis:6379
+      RABBITMQ_URI: amqp://hotelpulse:hotelpulse@rabbitmq:5672/
     depends_on:
-      mongo:
+      postgres:
+        condition: service_healthy
+      redis:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
     networks:
       - hotelpulse
     restart: on-failure
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8080/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
 
   worker:
-    build: ./apps/worker
+    build:
+      context: .
+      dockerfile: apps/worker/Dockerfile
     environment:
-      MONGO_URI: mongodb://mongo:27017
-      RABBITMQ_URI: amqp://guest:guest@rabbitmq:5672/
+      POSTGRES_URI: Host=postgres;Port=5432;Database=hotelpulse;Username=hotelpulse;Password=hotelpulse
+      REDIS_URI: redis:6379
+      RABBITMQ_URI: amqp://hotelpulse:hotelpulse@rabbitmq:5672/
     depends_on:
-      mongo:
-        condition: service_healthy
-      rabbitmq:
+      api:
         condition: service_healthy
     networks:
       - hotelpulse
@@ -70,7 +95,8 @@ services:
     environment:
       NUXT_PUBLIC_API_BASE: http://localhost:8080
     depends_on:
-      - api
+      api:
+        condition: service_healthy
     networks:
       - hotelpulse
 
@@ -79,4 +105,4 @@ networks:
     driver: bridge
 
 volumes:
-  mongo_data:
+  postgres_data:

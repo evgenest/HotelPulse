@@ -1,0 +1,90 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Typecheck and tests
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: hotelpulse
+          POSTGRES_PASSWORD: hotelpulse
+          POSTGRES_DB: hotelpulse
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U hotelpulse -d hotelpulse"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 20
+      rabbitmq:
+        image: rabbitmq:4-alpine
+        env:
+          RABBITMQ_DEFAULT_USER: hotelpulse
+          RABBITMQ_DEFAULT_PASS: hotelpulse
+        ports:
+          - 5672:5672
+        options: >-
+          --health-cmd "rabbitmq-diagnostics -q ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      POSTGRES_URI: Host=localhost;Port=5432;Database=hotelpulse;Username=hotelpulse;Password=hotelpulse
+      REDIS_URI: localhost:6379
+      RABBITMQ_URI: amqp://hotelpulse:hotelpulse@localhost:5672/
+      HOTELPULSE_STEP_DELAY_MS: "0"
+      HOTELPULSE_CONFIRM_PROBABILITY: "1"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.1.2
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: apps/web/pnpm-lock.yaml
+
+      - name: Install frontend dependencies
+        working-directory: apps/web
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck the frontend
+        run: npm run typecheck
+
+      - name: Unit and integration tests
+        run: npm test
+
+  images:
+    name: Docker images
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build images
+        run: docker compose build

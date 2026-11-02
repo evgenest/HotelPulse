@@ -1,320 +1,130 @@
 # HotelPulse
 
-Мини-SaaS для бронирования отелей, покрывающий полный стек современной hospitality-платформы в одном проекте: **.NET 10 · Vue/Nuxt 4 · RabbitMQ · MongoDB · Docker · Kubernetes**.
+[![CI](https://github.com/evgenest/HotelPulse/actions/workflows/ci.yml/badge.svg)](https://github.com/evgenest/HotelPulse/actions/workflows/ci.yml)
 
-Основная идея: подтверждение брони **асинхронное**. `POST /api/bookings` сразу возвращает `202 Accepted` со статусом `pending`, публикует сообщение в RabbitMQ, и отдельный Worker Service обрабатывает его — фронтенд при этом опрашивает API до получения `confirmed` или `rejected`.
+HotelPulse — небольшой сервис бронирования отелей. Гость выбирает номер, API сразу принимает запрос, а воркер подтверждает заезд из устойчивой очереди. Один и тот же номер нельзя продать дважды на одни даты.
 
----
+Живое демо: _добавьте публичный URL после деплоя на VPS._
 
 ## Архитектура
 
-```
-[Nuxt 4 SPA]  ── HTTP ──►  [.NET 10 Web API]  ──► [MongoDB]
-                                    │
-                                    └── publish ──► [RabbitMQ]  ──► [.NET Worker]
-                                                                          │
-                                                                          ▼
-                                                                    [MongoDB update]
-```
-
-### Сервисы (5 контейнеров)
-
-| Контейнер  | Технология                   | Порты            |
-|------------|------------------------------|------------------|
-| `web`      | Nuxt 4 (Node 24 + pnpm)      | `:3000`          |
-| `api`      | ASP.NET Core 10 Minimal API  | `:8080`          |
-| `worker`   | .NET 10 Worker Service       | —                |
-| `mongo`    | MongoDB 8                    | `:27017`         |
-| `rabbitmq` | RabbitMQ 4 + Management UI   | `:5672` `:15672` |
-
----
-
-## Технологии проекта
-
-| Технология       | Где используется                                                       |
-|------------------|------------------------------------------------------------------------|
-| C# / .NET 10     | `apps/api` (Minimal API) + `apps/worker` (BackgroundService)          |
-| REST API         | `/api/hotels`, `/api/bookings`                                         |
-| RabbitMQ         | Очередь `bookings.created` между API и Worker                         |
-| Vue 3 / Nuxt 4   | Frontend SPA                                                           |
-| TypeScript       | Весь фронтенд                                                          |
-| MongoDB          | Коллекции: `hotels`, `bookings`                                        |
-| Docker           | Dockerfile на каждый сервис + `docker-compose.yml`                     |
-| Kubernetes       | 7 манифестов в `k8s/` — запускать через `kind` или Docker Desktop K8s |
-| AI-assisted dev  | Использовался для ускорения скаффолдинга и шаблонных частей проекта    |
-
----
-
-## Структура репозитория
-
-```
-hotelpulse/
-├── docker-compose.yml
-├── README.md
-├── README.ru.md
-├── docs/
-│   ├── api.md                # API-контракт + формат сообщений RabbitMQ
-│   ├── api.ru.md
-│   ├── development.md        # Пошаговый план + верификация
-│   └── development.ru.md
-├── apps/
-│   ├── api/                  # ASP.NET Core 10 Minimal API
-│   │   ├── HotelPulse.Api.csproj
-│   │   ├── Program.cs        # все эндпоинты + DI + seed-данные
-│   │   ├── Models/
-│   │   ├── Messaging/        # BookingPublisher.cs
-│   │   └── Dockerfile
-│   ├── worker/               # .NET 10 Worker Service
-│   │   ├── HotelPulse.Worker.csproj
-│   │   ├── Program.cs
-│   │   ├── BookingConsumer.cs
-│   │   └── Dockerfile
-│   └── web/                  # Nuxt 4 frontend
-│       ├── nuxt.config.ts
-│       ├── app/
-│       │   ├── app.vue
-│       │   ├── assets/css/main.css
-│       │   ├── composables/      # useApi, useQueueStore, useBookingStore
-│       │   ├── components/       # 11 Vue компонентов
-│       │   └── pages/
-│       │       ├── index.vue           # список отелей
-│       │       ├── hotels/[id].vue     # детали отеля + форма брони
-│       │       └── bookings/[id].vue   # статус брони (polling)
-│       └── Dockerfile
-└── k8s/
-    ├── namespace.yaml
-    ├── mongo.yaml            # StatefulSet + Service
-    ├── rabbitmq.yaml         # Deployment + Service
-    ├── api.yaml              # Deployment + Service
-    ├── worker.yaml           # Deployment
-    ├── web.yaml              # Deployment + Service
-    └── ingress.yaml          # nginx Ingress
+```mermaid
+flowchart LR
+  web["Nuxt"] -->|HTTP| api[".NET API"]
+  api -->|SQL| pg["PostgreSQL"]
+  api -->|read-through| redis["Redis"]
+  api -->|outbox| mq["RabbitMQ"]
+  mq --> worker["Worker"]
+  worker -->|confirm or reject| pg
+  worker -->|invalidate| redis
+  web -->|poll booking| api
 ```
 
----
+`POST /api/bookings` проверяет заезд, в одной транзакции пишет бронь и строку outbox и возвращает **202 Accepted** со `status: pending`. Релей в API публикует `booking.created` в устойчивую очередь `bookings.created`. Воркер двигает ленту событий и ставит `confirmed` или `rejected`. Страница опрашивает `GET /api/bookings/{id}`, пока статус не станет окончательным.
 
-## Быстрый старт
+Если воркер остановлен, сообщение остаётся в RabbitMQ, а бронь остаётся `pending`. Запуск воркера её забирает. Повторная доставка уже завершённой брони подтверждается и игнорируется. Если Postgres отклоняет вставку из-за пересечения с другим активным заездом, API отвечает **409**.
 
-### Вариант 1 — Docker Compose (рекомендуется для первого запуска)
+Список отелей, карточка отеля и доступность кэшируются в Redis. Запись брони увеличивает версию ключа, поэтому следующее чтение идёт в PostgreSQL. Записи также живут 60 секунд. Ответы несут `X-Cache: HIT`, `MISS` или `BYPASS`.
+
+## Стек
+
+| Часть | Где |
+|---|---|
+| C# / .NET 10 | `apps/api`, `apps/worker`, общие проекты домена и инфраструктуры |
+| PostgreSQL 17 | Отели, номера, брони. SQL-миграции, exclusion-constraint, частичные индексы |
+| Redis 7 | Кэш каталога и чтений доступности |
+| RabbitMQ 4 | Устойчивая очередь `bookings.created`, ручной ack, transactional outbox |
+| Nuxt 4 / Vue 3 / TypeScript | `apps/web` |
+| xUnit | Юнит- и интеграционные тесты. Testcontainers локально, service containers в CI |
+| Docker Compose | Локальный стек и `docker-compose.prod.yml` |
+| Caddy | HTTPS на одном VPS |
+| Kubernetes | Манифесты в `k8s/` |
+
+Правило пересечения дат и снятые планы `EXPLAIN` — в [`docs/sql.md`](docs/sql.md). HTTP-контракт — в [`docs/api.ru.md`](docs/api.ru.md).
+
+## Запуск
+
+Docker Compose:
 
 ```bash
-docker compose up -d
+docker compose up -d --build
 
-# проверяем
-curl http://localhost:8080/api/hotels          # список 6 отелей
-curl http://localhost:8080/health              # {"status":"ok"}
-open http://localhost:3000                     # фронтенд
-open http://localhost:15672                    # RabbitMQ UI (guest / guest)
+curl -fsS http://localhost:8080/health
+curl -fsS http://localhost:8080/api/hotels
 ```
 
-Если вы обновляете существующий локальный volume с MongoDB 7 до MongoDB 8, перед первым запуском пересоздайте volume:
+Приложение: <http://localhost:3000>. Управление RabbitMQ: <http://localhost:15672> (`hotelpulse` / `hotelpulse`).
+
+Миграции выполняются при старте API и вставляют шесть отелей. Более ранний checkout этого репозитория использовал MongoDB; `docker compose down -v` удаляет тот неиспользуемый volume вместе с данными Postgres.
+
+Без Compose поднимите Postgres, Redis и RabbitMQ сами (`guest` на localhost подходит), затем:
 
 ```bash
-docker compose down -v
-docker compose up -d
+dotnet run --project apps/api
+dotnet run --project apps/worker
+cd apps/web && pnpm install && pnpm dev
 ```
 
-API заново заполняет коллекцию `hotels` при старте, поэтому каталог отелей восстановится автоматически на чистом volume.
-
-### Вариант 2 — Локально без Docker
-
-Нужно: .NET 10 SDK, Node 24, pnpm, MongoDB на 27017, RabbitMQ на 5672.
+Kubernetes: соберите образы, загрузите их в `kind` или `minikube` и примените namespace раньше остальных манифестов.
 
 ```bash
-# Терминал 1 — API
-cd apps/api
-dotnet run
+docker build -t hotelpulse-api:dev    -f apps/api/Dockerfile .
+docker build -t hotelpulse-worker:dev -f apps/worker/Dockerfile .
+docker build -t hotelpulse-web:dev    -f apps/web/Dockerfile apps/web
 
-# Терминал 2 — Worker
-cd apps/worker
-dotnet run
-
-# Терминал 3 — Frontend
-cd apps/web
-pnpm install
-pnpm run dev
-```
-
-### Вариант 3 — Kubernetes (`kind` или `minikube`)
-
-#### Вариант 3A — `kind`
-
-```bash
-# 1. Сборка образов
-docker build -t hotelpulse-api:dev    ./apps/api
-docker build -t hotelpulse-worker:dev ./apps/worker
-docker build -t hotelpulse-web:dev    ./apps/web
-
-# 2. Создаём кластер и загружаем образы
-kind create cluster --name hotelpulse
-kind load docker-image hotelpulse-api:dev    --name hotelpulse
-kind load docker-image hotelpulse-worker:dev --name hotelpulse
-kind load docker-image hotelpulse-web:dev    --name hotelpulse
-
-# 3. Деплой: сначала namespace, затем остальные манифесты
 kubectl apply -f k8s/namespace.yaml && kubectl apply -f k8s/
-kubectl get pods -n hotelpulse          # ждём пока все Running
-
-# 4. Доступ
-kubectl port-forward svc/api 8080:8080 -n hotelpulse &
-kubectl port-forward svc/web 3000:3000 -n hotelpulse &
-open http://localhost:3000
+kubectl port-forward svc/api 8080:8080 -n hotelpulse
+kubectl port-forward svc/web 3000:3000 -n hotelpulse
 ```
 
-#### Вариант 3B — `minikube`
+У Postgres есть постоянный volume. У Redis его нет: это кэш. Как volume ведёт себя на `kind` и `minikube`, описано в [`docs/kubernetes-storage-ru.md`](docs/kubernetes-storage-ru.md). Для одного VPS манифесты не нужны; см. [`DEPLOY.md`](DEPLOY.md).
+
+## Тесты
 
 ```bash
-# 1. Запускаем кластер
-minikube start
-
-# 2. Переключаем Docker CLI на daemon внутри minikube
-eval $(minikube docker-env)
-
-# 3. Сборка образов внутри minikube
-docker build -t hotelpulse-api:dev    ./apps/api
-docker build -t hotelpulse-worker:dev ./apps/worker
-docker build -t hotelpulse-web:dev    ./apps/web
-
-# 4. Деплой: сначала namespace, затем остальные манифесты
-kubectl apply -f k8s/namespace.yaml && kubectl apply -f k8s/
-kubectl get pods -n hotelpulse          # ждём пока все Running
-
-# 5. Доступ
-kubectl port-forward svc/api 8080:8080 -n hotelpulse &
-kubectl port-forward svc/web 3000:3000 -n hotelpulse &
-open http://localhost:3000
+npm run test:unit           # правила бронирования, без Docker
+npm run test:integration    # API, воркер, Postgres, Redis, RabbitMQ
+npm test                    # оба проекта
+npm run typecheck           # Nuxt / Vue
 ```
 
-> Если после деплоя Pod'ы застряли в `ImagePullBackOff`, скорее всего, образы были собраны не внутри Docker daemon'а `minikube`. В этом случае снова выполни `eval $(minikube docker-env)` и пересобери все три образа.
+Интеграционные тесты используют Testcontainers, если Docker доступен и `POSTGRES_URI` не задан. Задайте `POSTGRES_URI`, `REDIS_URI` и `RABBITMQ_URI`, чтобы направить их на уже запущенные сервисы. CI делает это через service containers и затем собирает три образа. См. [`.github/workflows/ci.yml`](.github/workflows/ci.yml).
 
-Если в кластере уже есть PVC с данными MongoDB 7, перед применением `mongo:8` используйте свежий PVC или новый namespace.
-Самый простой путь здесь — чистый PVC; каталог отелей будет заново заполнен при старте API.
+`HOTELPULSE_CONFIRM_PROBABILITY` по умолчанию `0.9`, поэтому живая бронь иногда отклоняется с причиной «Room became unavailable during processing.». Поставьте `1`, если каждый заезд должен подтверждаться. `HOTELPULSE_STEP_DELAY_MS` заменяет задержки 700 / 800 / 900 мс; тесты ставят `0`.
 
----
-
-## Руководство по развёртыванию
-
-### Нужна ли виртуальная машина (например Hetzner) для запуска проекта?
-
-**Нет** — для разработки и демонстрации всё запускается локально через Docker Compose (Вариант 1 выше), без какого-либо сервера.
-
-Если хочется опубликовать проект в интернете (например, для портфолио), достаточно одного дешёвого VPS:
-
-| Провайдер | Самый дешёвый тариф | Стоимость в месяц |
-|-----------|---------------------|-------------------|
-| Hetzner | CX22 (2 vCPU, 4 ГБ RAM) | ~€4 |
-| DigitalOcean | Basic Droplet (1 vCPU, 1 ГБ RAM) | $6 |
-| Oracle Cloud | Always Free (2 VM) | Бесплатно |
-
-Достаточно установить Docker на сервер и запустить `docker compose up -d`. **Kubernetes для простого развёртывания не нужен.**
-
----
-
-### Для чего здесь нужен Kubernetes и какую функцию выполняет?
-
-В реальной компании Kubernetes управляет оркестрацией контейнеров на множестве серверов. В этом демо-проекте манифесты в `k8s/` показывают, *как тот же набор сервисов разворачивается в production-среде*:
-
-| Что | Какой инструмент Kubernetes |
-|-----|-----------------------------|
-| Автоматически перезапускает API при падении | `Deployment` с политикой перезапуска |
-| Помечает RabbitMQ и API как готовые и добавляет их в endpoints сервисов только после успешной проверки | Readiness probes |
-| Даёт каждому сервису стабильное внутреннее имя | `Service` (ClusterIP) |
-| Обеспечивает постоянное хранилище для MongoDB | `PersistentVolumeClaim` |
-| Роутит `/api/*` → API, `/` → Web через HTTP | `Ingress` (требует nginx ingress controller) |
-| Изолирует все ресурсы от других рабочих нагрузок | `Namespace` `hotelpulse` |
-
-Readiness probes не задают порядок запуска других Pod'ов: `worker` не "ждёт" RabbitMQ на уровне Kubernetes и стартует сразу, полагаясь на логику переподключения приложения.
-
-На одной машине Docker Compose уже делает всё то же самое. Папка `k8s/` демонстрирует знание production-пути — именно это важно показать на интервью.
-
----
-
-### Бесплатные и дешёвые варианты Kubernetes
-
-| Вариант | Стоимость | Для чего |
-|---------|-----------|----------|
-| `kind` на ноутбуке | **Бесплатно** | Локальная разработка / демо (этот проект) |
-| `minikube` на ноутбуке | **Бесплатно** | Локальная разработка / демо |
-| `k3s` на дешёвом VPS | ~€4/мес (только сервер) | Лёгкий self-hosted Kubernetes |
-| Docker Desktop (встроенный K8s) | **Бесплатно** | Windows / Mac |
-| Oracle Cloud Free Tier | **Бесплатно** | Облачный Kubernetes без оплаты |
-| Hetzner CX22 + k3s | ~€4/мес | Self-hosted production-кластер |
-| DigitalOcean Kubernetes | от $12/мес | Managed Kubernetes |
-
-> **Рекомендация для этого проекта:** Используй `kind` локально — бесплатно, устанавливается за 2 минуты, облачный аккаунт не нужен.
-
----
-
-### Быстрый старт Kubernetes локально
-
-`kind` и `minikube` одинаково подходят для этого проекта. `kind` (Kubernetes IN Docker) стартует быстрее и не требует виртуальной машины — K8s-узлы запускаются прямо в Docker-контейнерах, что делает его легче и удобнее для CI. `minikube` дружелюбнее для новичков, поставляется с опциональными аддонами (ingress controller, dashboard) и имеет большее сообщество. Выбирай любой.
-
-**macOS**
+## Сбой воркера
 
 ```bash
-# kind
-brew install kind kubectl
-
-# minikube (альтернатива)
-brew install minikube kubectl
-```
-
-**Windows (PowerShell)**
-
-```powershell
-# kind
-winget install Kubernetes.kind
-winget install Kubernetes.kubectl
-
-# minikube (альтернатива)
-winget install Kubernetes.minikube
-winget install Kubernetes.kubectl
-```
-
-После установки используй один из сценариев выше:
-
-- **`kind`**: сборка образов → `kind create cluster` → `kind load docker-image ...` → `kubectl apply -f k8s/namespace.yaml && kubectl apply -f k8s/`
-- **`minikube`**: `minikube start` → `eval $(minikube docker-env)` → сборка образов → `kubectl apply -f k8s/namespace.yaml && kubectl apply -f k8s/`
-
-> **Windows:** команды `kind`/`minikube`, `kubectl`, `docker build` и `docker compose` выполняй в **Git Bash** или **WSL** — оператор `&` и команда `open` не поддерживаются в PowerShell/CMD. Вместо `open http://localhost:3000` используй `start http://localhost:3000` (CMD) или просто открой ссылку в браузере вручную.
-
-### Деплой на дешёвый VPS через Docker Compose (без Kubernetes)
-
-```bash
-# На чистом Ubuntu 24.04 VPS
-curl -fsSL https://get.docker.com | sh
-git clone https://github.com/evgenest/HotelPulse.git && cd HotelPulse
-docker compose up -d
-```
-
-Готово — весь стек работает. Kubernetes не нужен.
-
----
-
-## Failure-демо
-
-```bash
-# Останавливаем worker — бронь зависнет в статусе "pending"
 docker compose stop worker
 
-# Создаём бронь в UI — статус не меняется
-# Запускаем worker обратно — RabbitMQ воспроизведёт сообщение из durable queue
+curl -s -X POST http://localhost:8080/api/bookings \
+  -H 'Content-Type: application/json' \
+  -d '{"hotelId":"h_porter","roomId":"r2","guestName":"Anna Schmidt","checkIn":"2027-04-01","checkOut":"2027-04-03","nights":2,"total":390}'
+
+# статус остаётся pending — сообщение лежит в устойчивой очереди
 docker compose start worker
+# та же бронь переходит в confirmed
 ```
 
-Это демонстрирует главную ценность очереди: **устойчивость при частичном сбое**.
+То же самое с сайта: остановите воркер, забронируйте номер, страница останется на «Processing», запустите воркер — опрос переключится на confirmed.
 
----
+## Деплой
 
-## Что намеренно не реализовано
+[`DEPLOY.md`](DEPLOY.md) — путь для VPS: скопируйте `.env.example` в `.env`, направьте DNS на машину и выполните `docker compose -f docker-compose.prod.yml up -d --build`. Caddy запросит сертификат. В репозитории нет серверных секретов, и сам он никуда не деплоится.
 
-Следующее было сознательно исключено, чтобы уложиться в 1-2 дня:
+## Репозиторий
 
-- Аутентификация / авторизация
-- Реальные платежи
-- Unit / интеграционные тесты
-- CI/CD пайплайн
-- Pinia и сложный state management (composables достаточно)
+```
+apps/api/                         HTTP API
+apps/worker/                      потребитель очереди
+apps/web/                         приложение Nuxt
+apps/HotelPulse.Domain/           валидация, переходы статусов, лента, политика доставки
+apps/HotelPulse.Infrastructure/   SQL-миграции, репозитории, Redis, outbox, consumer
+tests/                            юнит- и интеграционные тесты
+k8s/                              namespace, Postgres, Redis, RabbitMQ, API, worker, web, ingress
+deploy/Caddyfile                  прокси для продакшена
+docker-compose.yml                локальный стек
+docker-compose.prod.yml           продакшен на одном хосте
+```
 
-Подробный пошаговый план — в [`docs/development.ru.md`](docs/development.ru.md).
-API-контракт и формат сообщений — в [`docs/api.ru.md`](docs/api.ru.md).
+Учётные записи и оплата картой в этот сервис не входят. История в браузере — локальный кэш списка API; сами строки лежат в Postgres.

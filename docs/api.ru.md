@@ -1,209 +1,130 @@
-# API Reference
+# API
 
-## REST-эндпоинты
+Базовый URL в разработке: `http://localhost:8080`.
 
-### Отели
+Даты — `yyyy-MM-dd`. Деньги — число JSON. `createdAt` — UTC.
 
-#### `GET /api/hotels`
-Возвращает список всех отелей вместе с номерами.
+## Отели
 
-**Ответ `200 OK`**
-```json
-[
-  {
-    "id": "h_alpina",
-    "name": "Hôtel Alpina",
-    "city": "Zermatt, CH",
-    "rating": 5,
-    "glyph": "ALP-01",
-    "priceFrom": 320,
-    "description": "...",
-    "amenities": ["Spa", "Restaurant", "Ski storage"],
-    "rooms": [
-      { "id": "r1", "type": "Mountain Standard", "capacity": 2, "price": 320, "sqm": 22 }
-    ]
-  }
-]
-```
+### `GET /api/hotels`
 
-#### `GET /api/hotels/{id}`
-Возвращает один отель по идентификатору.
+Шесть отелей и их номера, по имени. Ответ кэшируется. Заголовок `X-Cache`: `HIT`, `MISS` или `BYPASS`.
 
-**Ответ `200 OK`** — та же структура (один объект).
-**Ответ `404`** — отель не найден.
+### `GET /api/hotels/{id}`
 
----
+Один отель. `404`, если id неизвестен. Тот же заголовок кэша.
 
-### Бронирования
+### `GET /api/hotels/{id}/availability?checkIn=2027-04-01&checkOut=2027-04-03`
 
-#### `POST /api/bookings`
-Создаёт бронь и публикует сообщение в RabbitMQ.
+У каждого номера `available: true`, если ни один pending или confirmed заезд не пересекает это полуоткрытое окно. `404`, если отеля нет. `400`, если дат нет или выезд не позже заезда. Кэш на отель и пару дат; бронь этого отеля его сбрасывает.
 
-**API не обрабатывает бронь синхронно.** Он только записывает запись со статусом `pending` в MongoDB и сразу публикует сообщение в очередь. Worker подберёт его в течение 2-3 секунд.
-
-**Тело запроса**
 ```json
 {
-  "hotelId":   "h_alpina",
-  "roomId":    "r2",
-  "guestName": "Anna Schmidt",
-  "checkIn":   "2026-06-01",
-  "checkOut":  "2026-06-05",
-  "nights":    4,
-  "total":     1920
-}
-```
-
-**Ответ `202 Accepted`**
-```json
-{ "id": "bkg_a3f9c12d8e4b", "status": "pending" }
-```
-
-#### `GET /api/bookings`
-Возвращает 20 последних броней по времени создания, начиная с самой новой. Боковая панель истории во фронтенде использует этот эндпоинт, чтобы одинаково загружать историю бронирований из MongoDB на всех страницах.
-
-#### `GET /api/bookings?ids={id1},{id2}`
-Возвращает текущее состояние до 20 известных броней, сохраняя порядок запрошенных идентификаторов. Этот вариант можно использовать, чтобы синхронизировать известный набор ID без отдельного запроса на каждую запись.
-
-**Ответ `200 OK`**
-```json
-[
-  {
-    "id": "bkg_a3f9c12d8e4b",
-    "hotelId": "h_alpina",
-    "hotelName": "Hôtel Alpina",
-    "roomId": "r2",
-    "roomType": "Matterhorn View King",
-    "guestName": "Anna Schmidt",
-    "checkIn": "2026-06-01",
-    "checkOut": "2026-06-05",
-    "nights": 4,
-    "total": 1920,
-    "status": "pending",
-    "createdAt": "2026-05-11T14:32:00Z",
-    "events": []
-  }
-]
-```
-
-#### `GET /api/bookings/{id}`
-Возвращает текущее состояние брони. Вызывается в цикле для отслеживания подтверждения.
-
-**Ответ `200 OK`**
-```json
-{
-  "id": "bkg_a3f9c12d8e4b",
-  "hotelId": "h_alpina",
-  "hotelName": "Hôtel Alpina",
-  "roomId": "r2",
-  "roomType": "Matterhorn View King",
-  "guestName": "Anna Schmidt",
-  "checkIn": "2026-06-01",
-  "checkOut": "2026-06-05",
-  "nights": 4,
-  "total": 1920,
-  "status": "confirmed",
-  "confirmationCode": "HP-A3F9C1",
-  "rejectionReason": null,
-  "createdAt": "2026-05-11T14:32:00Z",
-  "events": [
-    { "label": "api → POST /bookings received",          "done": true,  "time": "14:32:00", "current": false },
-    { "label": "api → published to bookings.created",    "done": true,  "time": "14:32:00", "current": false },
-    { "label": "worker → message delivered",             "done": true,  "time": "14:32:01", "current": false },
-    { "label": "worker → reservation locked in mongo",   "done": true,  "time": "14:32:02", "current": false },
-    { "label": "worker → status: confirmed",             "done": true,  "time": "14:32:02", "current": false }
+  "hotelId": "h_porter",
+  "checkIn": "2027-04-01",
+  "checkOut": "2027-04-03",
+  "rooms": [
+    { "id": "r1", "type": "Courtyard Single", "capacity": 1, "price": 150, "sqm": 14, "available": true }
   ]
 }
 ```
 
-**Возможные значения `status`:** `pending` · `confirmed` · `rejected`
+SQL и план — в [`sql.md`](sql.md).
 
-**Ответ `404`** — бронь не найдена.
+## Брони
 
-#### `GET /health`
-Liveness-проба для Kubernetes.
+### `POST /api/bookings`
 
-**Ответ `200 OK`**
+Заезд не подтверждается синхронно. Тело проверяется, пишется `pending`, в outbox ставится сообщение, ответ — **202 Accepted**.
+
 ```json
-{ "status": "ok", "time": "2026-05-11T14:32:00Z" }
+{
+  "hotelId": "h_porter",
+  "roomId": "r2",
+  "guestName": "Anna Schmidt",
+  "checkIn": "2027-04-01",
+  "checkOut": "2027-04-03",
+  "nights": 2,
+  "total": 390
+}
 ```
 
----
+`nights` равно числу ночей между датами. `total` равен цене номера, умноженной на это число. Имя гостя обязательно и не длиннее 120 символов. Заезд не может быть раньше сегодняшнего дня (UTC).
 
-## Стратегия polling
+**202**
 
-Фронтенд опрашивает `GET /api/bookings/{id}` каждые **1500 мс** до тех пор, пока `status !== "pending"`, затем останавливается. Без WebSocket и SSE — просто и достаточно для демо.
-
-```typescript
-// apps/web/pages/bookings/[id].vue
-onMounted(async () => {
-  await fetchBooking()
-  if (booking.value?.status === 'pending') {
-    pollInterval = setInterval(fetchBooking, 1500)
-  }
-})
+```json
+{ "id": "bkg_a3f9c12d8e4b", "status": "pending" }
 ```
 
----
+Необязательный заголовок `Idempotency-Key` (до 200 символов). Тот же ключ и то же тело возвращают исходную бронь. Тот же ключ с другим телом — **409**.
 
-## Формат сообщения RabbitMQ
+**400** — ошибки проверки: `{ "errors": [{ "field": "total", "message": "..." }] }`.
 
-**Exchange:** `hotelpulse` (тип: `topic`, durable)
-**Routing key:** `booking.created`
-**Queue:** `bookings.created` (durable — переживает перезапуск брокера)
+**404** — неизвестный отель или номер.
 
-**Тело сообщения (JSON)**
+**409** — эти даты уже удерживает pending или confirmed заезд этого номера.
+
+### `GET /api/bookings`
+
+20 последних броней, сначала новые.
+
+### `GET /api/bookings?ids={id1},{id2}`
+
+До 20 броней в запрошенном порядке.
+
+### `GET /api/bookings/{id}`
+
+Опрашивайте, пока `status` не станет `confirmed` или `rejected`.
+
+```json
+{
+  "id": "bkg_a3f9c12d8e4b",
+  "hotelId": "h_porter",
+  "hotelName": "The Porter",
+  "roomId": "r2",
+  "roomType": "Standard Queen",
+  "guestName": "Anna Schmidt",
+  "checkIn": "2027-04-01",
+  "checkOut": "2027-04-03",
+  "nights": 2,
+  "total": 390,
+  "status": "confirmed",
+  "confirmationCode": "HP-A3F9C1",
+  "createdAt": "2026-11-02T14:32:00Z",
+  "events": [
+    { "label": "api → POST /bookings received", "done": true, "time": "14:32:00", "current": false },
+    { "label": "api → published to bookings.created", "done": true, "time": "14:32:00", "current": false },
+    { "label": "worker → message delivered", "done": true, "time": "14:32:01", "current": false },
+    { "label": "worker → reservation locked in postgres", "done": true, "time": "14:32:02", "current": false },
+    { "label": "worker → status: confirmed", "done": true, "time": "14:32:02", "current": false }
+  ]
+}
+```
+
+Отказ ставит `rejectionReason` и оставляет `confirmationCode` пустым. Примерно одна бронь из десяти отклоняется, если не задано `HOTELPULSE_CONFIRM_PROBABILITY=1`.
+
+### `GET /health`
+
+`200`, когда Postgres отвечает на `SELECT 1`. Иначе `503`. Redis для readiness не нужен.
+
+## Очередь
+
+Обмен `hotelpulse` (topic, durable). Ключ `booking.created`. Очередь `bookings.created` (durable). Сообщения persistent.
+
 ```json
 {
   "bookingId": "bkg_a3f9c12d8e4b",
-  "hotelId":   "h_alpina",
-  "roomId":    "r2",
-  "createdAt": "2026-05-11T14:32:00.000Z"
+  "hotelId": "h_porter",
+  "roomId": "r2",
+  "createdAt": "2026-11-02T14:32:00Z"
 }
 ```
 
-**Свойства сообщения**
-```
-ContentType: application/json
-Persistent:  true              ← сохраняется при перезапуске брокера
-```
+Строка фиксируется до публикации. Если брокер недоступен, outbox-релей повторяет попытку. Воркер подтверждает сообщение только после терминального статуса. Сбой посередине конвейера приводит к повторной доставке; смена статуса — compare-and-set из `pending`, поэтому второй проход не выдаёт второй код. Ядовитое тело отбрасывается. Временная ошибка возвращается в очередь один раз, затем бронь отклоняется. Недоступность базы возвращает сообщение в очередь даже при второй доставке, чтобы оно не пропало, пока Postgres недоступен.
 
----
+Конвейер ждёт 700 мс, затем 800 мс, затем 900 мс, если не задан `HOTELPULSE_STEP_DELAY_MS`.
 
-## Пайплайн обработки в Worker
+## Таблицы
 
-При получении сообщения Worker имитирует 3-этапный пайплайн с реалистичными задержками:
-
-| Этап | Задержка  | Действие                                          |
-|------|-----------|---------------------------------------------------|
-| 1    | +700 мс   | Отметить "message delivered" в event log          |
-| 2    | +800 мс   | Отметить "reservation locked" в event log         |
-| 3    | +900 мс   | Определить исход — 90% confirmed / 10% rejected   |
-
-Итого: ~2.4 секунды от публикации сообщения до финального статуса.
-
-При исходе `rejected` бронь получает:
-```json
-{
-  "status": "rejected",
-  "rejectionReason": "Room became unavailable during processing."
-}
-```
-
----
-
-## Коллекции MongoDB
-
-### `hotels`
-Заполняется seed-данными при первом запуске API. Структура соответствует C#-рекорду `Hotel` в `apps/api/Models/Hotel.cs`.
-
-### `bookings`
-Создаётся через `POST /api/bookings`, обновляется Worker-ом. Ключевые поля:
-
-| Поле               | Тип      | Кто устанавливает |
-|--------------------|----------|-------------------|
-| `_id`              | string   | API               |
-| `status`           | string   | API / Worker      |
-| `events`           | array    | API / Worker      |
-| `confirmationCode` | string?  | Worker            |
-| `rejectionReason`  | string?  | Worker            |
+`hotels`, `rooms`, `bookings`, `outbox`, `idempotency_keys` и `schema_migrations`. Их создаёт `apps/HotelPulse.Infrastructure/Migrations`. Каталог — `002_seed.sql`.

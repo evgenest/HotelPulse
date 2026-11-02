@@ -5,8 +5,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="MongoDB.Driver" Version="3.8.1" />
-    <PackageReference Include="RabbitMQ.Client" Version="7.2.1" />
-    <PackageReference Include="SharpCompress" Version="1.0.0" />
+    <ProjectReference Include="..\HotelPulse.Domain\HotelPulse.Domain.csproj" />
+    <ProjectReference Include="..\HotelPulse.Infrastructure\HotelPulse.Infrastructure.csproj" />
   </ItemGroup>
 </Project>
