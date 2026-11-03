@@ -36,7 +36,7 @@
 3. .NET-тесты в облачной сессии: установить SDK (`dotnet-install.sh --jsonfile global.json`), запустить `dockerd`, затем `npm run test:unit` и `npm run test:integration`.
 4. Порт закончен. Что осталось (не блокирует):
    - **деплой на Render** — синхронизировать Blueprint, завести ветку Neon `laravel`, проверить переключатель в браузере;
-   - **нагрузочный smoke-тест k6** и `docs/benchmarks.md` (спека → «Нагрузочная проверка»). Запуск тестов PHP: `docker run --rm -v $PWD/apps/api-laravel:/app -w /app <образ PHP 8.5 с pdo_pgsql, redis, pcntl, sockets, bcmath> ./vendor/bin/pest`.
+   - **нагрузочный smoke-тест k6** — 🔧 в работе: сценарий `scripts/load/booking-load.js`, проверки базы `after-run.sql`, запуск `run.sh` написаны; осталось прогнать против .NET и Laravel и записать `docs/benchmarks.md`. Запуск тестов PHP: `docker run --rm -v $PWD/apps/api-laravel:/app -w /app <образ PHP 8.5 с pdo_pgsql, redis, pcntl, sockets, bcmath> ./vendor/bin/pest`.
 
 ### Известные ограничения облачной сессии (не проекта)
 
