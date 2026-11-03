@@ -4,7 +4,7 @@
 
 HotelPulse is a small hotel booking service. A guest picks a room, the API accepts the request immediately, and a worker confirms the stay from a durable queue. The room cannot be sold twice for the same dates.
 
-It is a learning project. The aim is not only working code and a demo, but to understand how a production system is put together end to end, from the database to the browser: which decisions affect reliability, performance and the business rules, and why. Those decisions and the problems behind them are written down in [`docs/adr/`](docs/adr/README.md) (in Russian), with a glossary.
+It is a learning project. The aim is not only working code and a demo, but to understand how a production system is put together end to end, from the database to the browser: which decisions affect reliability, performance and the business rules, and why. Those decisions and the problems behind them are written down in [`docs/adr/`](docs/adr/README.md) (in Russian), with a glossary. Start with [`docs/why-not-mvp.md`](docs/why-not-mvp.md): every decision on one page, with what would break without it.
 
 ## Live demo
 
