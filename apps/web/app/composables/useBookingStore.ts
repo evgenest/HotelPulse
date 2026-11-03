@@ -1,8 +1,12 @@
-// Booking history stored in localStorage, loaded lazily on first access
+// Booking history stored in localStorage, loaded lazily on first access.
+// One history per backend: ids from the .NET API do not exist in Laravel's.
 
 import type { Booking } from './useApi'
+import type { BackendId } from './useBackend'
 
-const LS_KEY = 'hp.bookings'
+function storageKey(backend: BackendId) {
+  return backend === 'dotnet' ? 'hp.bookings' : `hp.bookings.${backend}`
+}
 const MAX_HISTORY = 20
 const REFRESH_TTL_MS = 5000
 const SYNC_INTERVAL_MS = 5000
@@ -22,19 +26,21 @@ export interface HistoryEntry {
   createdAt?: string
 }
 
+let activeBackend: BackendId | null = null
+
 function loadFromStorage(): HistoryEntry[] {
-  if (import.meta.server) return []
+  if (import.meta.server || activeBackend === null) return []
   try {
-    return JSON.parse(localStorage.getItem(LS_KEY) ?? '[]')
+    return JSON.parse(localStorage.getItem(storageKey(activeBackend)) ?? '[]')
   } catch {
     return []
   }
 }
 
 function saveToStorage(entries: HistoryEntry[]) {
-  if (import.meta.server) return
+  if (import.meta.server || activeBackend === null) return
   try {
-    localStorage.setItem(LS_KEY, JSON.stringify(entries.slice(0, MAX_HISTORY)))
+    localStorage.setItem(storageKey(activeBackend), JSON.stringify(entries.slice(0, MAX_HISTORY)))
   } catch {}
 }
 
@@ -45,8 +51,11 @@ let syncInterval: ReturnType<typeof setInterval> | null = null
 let syncConsumers = 0
 let focusListenersInstalled = false
 
-// Initialise once on client
-if (import.meta.client) {
+/** Shows the history of the selected backend; called whenever it changes. */
+function useBackendHistory(backend: BackendId) {
+  if (activeBackend === backend) return
+  activeBackend = backend
+  lastRefreshAt = 0
   bookingHistory.value = loadFromStorage()
 }
 
@@ -124,8 +133,8 @@ async function refreshHistoryFromApi(apiBase: string, force = false) {
 }
 
 export function useBookingStore() {
-  const config = useRuntimeConfig()
-  const apiBase = config.public.apiBase as string
+  const backend = useBackend()
+  if (import.meta.client) useBackendHistory(backend.current.value.id)
 
   function addBooking(entry: HistoryEntry) {
     bookingHistory.value = [entry, ...bookingHistory.value].slice(0, MAX_HISTORY)
@@ -148,7 +157,14 @@ export function useBookingStore() {
   }
 
   function refreshHistory(options: { force?: boolean } = {}) {
-    return refreshHistoryFromApi(apiBase, options.force ?? false)
+    useBackendHistory(backend.current.value.id)
+    return refreshHistoryFromApi(backend.apiBase.value, options.force ?? false)
+  }
+
+  /** After the backend switch: show that backend's history and refresh it. */
+  function switchBackend() {
+    useBackendHistory(backend.current.value.id)
+    return refreshHistory({ force: true })
   }
 
   function installFocusListeners() {
@@ -198,6 +214,7 @@ export function useBookingStore() {
     updateStatus,
     clearHistory,
     refreshHistory,
+    switchBackend,
     startHistorySync,
   }
 }

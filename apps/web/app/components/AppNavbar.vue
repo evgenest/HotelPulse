@@ -12,6 +12,26 @@
       </div>
 
       <div class="row gap-2">
+        <div
+          v-if="backend.switchable.value"
+          class="backend-switch"
+          role="radiogroup"
+          aria-label="Backend"
+          title="Same API, two implementations"
+        >
+          <button
+            v-for="option in backend.options.value"
+            :key="option.id"
+            type="button"
+            role="radio"
+            class="backend-option"
+            :class="{ active: option.id === backend.current.value.id }"
+            :aria-checked="option.id === backend.current.value.id"
+            @click="choose(option.id)"
+          >
+            {{ option.label }}
+          </button>
+        </div>
         <span class="pill nav-status" title="API health">
           <span class="pill-dot" style="background: var(--ok)" />
           <span style="color: var(--muted)">api</span>&nbsp;200ms
@@ -50,6 +70,8 @@
 </template>
 
 <script setup lang="ts">
+import type { BackendId } from '~/composables/useBackend'
+
 defineProps<{
   activeRoute?: string | symbol | null
   queueState: { workerOnline: boolean }
@@ -62,6 +84,45 @@ defineEmits<{
 }>()
 
 const route = useRoute()
+const backend = useBackend()
+const store = useBookingStore()
+
+// A booking id exists only in the backend that created it, so a booking page
+// goes back to the hotel list after a switch.
+async function choose(id: BackendId) {
+  if (id === backend.current.value.id) return
+  backend.select(id)
+  void store.switchBackend()
+  if (route.path.startsWith('/bookings/')) await navigateTo('/')
+}
+
 const repoUrl = useRuntimeConfig().public.repoUrl as string
 const isHotels = computed(() => route.name === 'index')
 </script>
+
+<style scoped>
+.backend-switch {
+  display: inline-flex;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 2px;
+}
+.backend-option {
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 12px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  cursor: pointer;
+}
+.backend-option.active {
+  background: var(--ink);
+  color: var(--bg);
+}
+.backend-option:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+</style>

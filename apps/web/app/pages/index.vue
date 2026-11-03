@@ -98,8 +98,10 @@ const hotelsRef = ref<HTMLElement | null>(null)
 let stopHistorySync: (() => void) | null = null
 
 const config = useRuntimeConfig()
+const { apiBase } = useBackend()
 const { data: hotels, pending, refresh } = await useAsyncData('hotels', () =>
-  $fetch<import('~/composables/useApi').Hotel[]>(`${config.public.apiBase}/api/hotels`)
+  $fetch<import('~/composables/useApi').Hotel[]>(`${apiBase.value}/api/hotels`),
+  { watch: [apiBase] },
 )
 
 function retryHotels() {

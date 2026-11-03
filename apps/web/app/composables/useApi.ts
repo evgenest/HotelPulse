@@ -55,8 +55,8 @@ export interface CreateBookingPayload {
 }
 
 export function useApi() {
-  const config = useRuntimeConfig()
-  const base = config.public.apiBase as string
+  const { apiBase } = useBackend()
+  const base = apiBase.value
 
   return {
     getHotels: () => $fetch<Hotel[]>(`${base}/api/hotels`),

@@ -26,15 +26,15 @@
 | 6 | HTTP-эндпоинты (9 маршрутов), X-Request-Id, заголовки безопасности, rate limit через Redis с пропуском при сбое, единый ответ на 500 | ✅ |
 | 7 | Outbox relay (confirms + mandatory) и consumer (prefetch 1, DeliveryPolicy, SIGTERM) на php-amqplib | ✅ |
 | 8 | Интеграционные тесты (включая параллельные) + CI | ✅ 147 тестов; job `laravel` в CI (PHP 8.5, Pint, composer audit, Pest, параллельные ×3) |
-| 9 | Переключатель бэкенда на фронте | ⏭ следующий шаг |
-| 10 | Деплой (Render, Docker + supervisord) и документация | ⏳ |
+| 9 | Переключатель «.NET / Laravel» в шапке; своя история бронирований на каждый бэкенд; без `NUXT_PUBLIC_API_BASE_LARAVEL` переключатель скрыт | ✅ (typecheck; в браузере проверю после деплоя) |
+| 10 | Деплой (Render, Docker + supervisord) и документация | ⏭ следующий шаг |
 
 ## Как продолжить в новой сессии
 
 1. `git checkout claude/epic-cori-g8qizf && git pull`
 2. Прочитать этот файл, план и `docs/adr/`.
 3. .NET-тесты в облачной сессии: установить SDK (`dotnet-install.sh --jsonfile global.json`), запустить `dockerd`, затем `npm run test:unit` и `npm run test:integration`.
-4. Следующая задача — пункт 9 этапа 1: переключатель бэкенда на фронте. Перед этим проверить, что job `laravel` в CI зелёный. Запуск тестов PHP: `docker run --rm -v $PWD/apps/api-laravel:/app -w /app <образ PHP 8.5 с pdo_pgsql, redis, pcntl, sockets, bcmath> ./vendor/bin/pest`.
+4. Следующая задача — пункт 10 этапа 1: Dockerfile + supervisord для Laravel, сервисы в `docker-compose.yml` и `render.yaml`, документация. Проверить, что job `laravel` в CI зелёный. Запуск тестов PHP: `docker run --rm -v $PWD/apps/api-laravel:/app -w /app <образ PHP 8.5 с pdo_pgsql, redis, pcntl, sockets, bcmath> ./vendor/bin/pest`.
 
 ### Известные ограничения облачной сессии (не проекта)
 
@@ -44,6 +44,8 @@
 - CI на GitHub таких ограничений не имеет.
 
 ## Журнал
+
+- 2026-11-03 — переключатель бэкенда на фронте. Решение: ID бронирований существуют только в своём бэкенде, поэтому история хранится отдельно (`hp.bookings` для .NET — старый ключ, чтобы не потерять историю; `hp.bookings.laravel`), а со страницы бронирования после переключения — возврат к списку отелей.
 
 - 2026-11-03 — feature-тесты Laravel: каталог, бронирования, отмена, worker/relay (включая «брокер недоступен» и повторную доставку), параллельные сценарии из .NET (10 POST → один 202, 10 с одним ключом → одно бронирование, отмена против worker'а). Итого 147 тестов, три прогона подряд без падений. Найдено при отладке: в Laravel фасад `Redis` без `use` указывает на класс расширения phpredis, а менеджер Redis читает конфиг один раз — для имитации сбоя нужен хелпер `breakRedis()`.
 

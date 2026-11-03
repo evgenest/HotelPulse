@@ -137,7 +137,7 @@ import type { Hotel } from '~/composables/useApi'
 definePageMeta({ layout: false })
 
 const route = useRoute()
-const config = useRuntimeConfig()
+const { apiBase } = useBackend()
 const { queueState, onPublish } = useQueueStore()
 const { bookingHistory, addBooking, clearHistory, refreshHistory, startHistorySync } = useBookingStore()
 
@@ -147,7 +147,8 @@ const showForm = ref(false)
 let stopHistorySync: (() => void) | null = null
 
 const { data: hotel } = await useAsyncData(`hotel-${route.params.id}`, () =>
-  $fetch<Hotel>(`${config.public.apiBase}/api/hotels/${route.params.id}`)
+  $fetch<Hotel>(`${apiBase.value}/api/hotels/${route.params.id}`),
+  { watch: [apiBase] },
 )
 
 const selectedRoomId = ref(hotel.value?.rooms[0]?.id ?? '')
@@ -161,7 +162,7 @@ async function handleBookingSubmit(data: {
 
   try {
     const result = await $fetch<{ id: string; status: string }>(
-      `${config.public.apiBase}/api/bookings`,
+      `${apiBase.value}/api/bookings`,
       {
         method: 'POST',
         body: {

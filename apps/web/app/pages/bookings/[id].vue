@@ -132,7 +132,7 @@ const BOOKING_PENDING_POLL_INTERVAL_MS = 1500
 const BOOKING_REVALIDATE_INTERVAL_MS = 5000
 
 const route = useRoute()
-const config = useRuntimeConfig()
+const { apiBase } = useBackend()
 const { queueState, onAck } = useQueueStore()
 const { bookingHistory, updateStatus, clearHistory, refreshHistory, startHistorySync } = useBookingStore()
 
@@ -174,7 +174,7 @@ function shouldSyncActiveBooking() {
 async function fetchBooking() {
   try {
     const result = await $fetch<Booking>(
-      `${config.public.apiBase}/api/bookings/${route.params.id}`
+      `${apiBase.value}/api/bookings/${route.params.id}`
     )
     const prevStatus = booking.value?.status ?? null
     booking.value = result
@@ -264,7 +264,7 @@ async function cancel() {
   cancelError.value = null
   try {
     const result = await $fetch<Booking>(
-      `${config.public.apiBase}/api/bookings/${booking.value.id}/cancel`,
+      `${apiBase.value}/api/bookings/${booking.value.id}/cancel`,
       { method: 'POST' }
     )
     booking.value = result
