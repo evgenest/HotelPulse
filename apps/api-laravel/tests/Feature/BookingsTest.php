@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+use Illuminate\Support\Facades\DB;
+
 // docs/specs/laravel-port.md → API table, booking rows.
 
 it('accepts a valid booking with 202, a Location and status pending', function () {
@@ -119,7 +121,6 @@ it('limits booking requests per client and lets them through without Redis', fun
     $this->postJson('/api/bookings', bookingBody(66, ['roomId' => 'r3', 'total' => 855]))->assertStatus(202);
     $this->postJson('/api/bookings', bookingBody(66, ['roomId' => 'r4', 'total' => 1080]))->assertStatus(429)->assertHeader('Retry-After');
 
-    config(['database.redis.default.url' => 'redis://127.0.0.1:1']);
-    Redis::purge();
+    breakRedis();
     $this->postJson('/api/bookings', bookingBody(66, ['roomId' => 'r4', 'total' => 1080]))->assertStatus(202);
 });

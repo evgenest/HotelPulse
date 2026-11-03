@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 // docs/specs/laravel-port.md → API table, catalog rows.
 
-use Illuminate\Support\Facades\Redis;
+use Illuminate\Support\Facades\DB;
 
 it('reports ok and the version on /health when Postgres answers', function () {
     $this->getJson('/health')->assertOk()->assertJson(['status' => 'ok', 'version' => config('hotelpulse.version')]);
@@ -29,8 +29,7 @@ it('lists hotels with MISS first and HIT second', function () {
 });
 
 it('reads Postgres with X-Cache BYPASS when Redis is down', function () {
-    config(['database.redis.default.url' => 'redis://127.0.0.1:1']);
-    Redis::purge();
+    breakRedis();
 
     $this->getJson('/api/hotels')->assertOk()->assertHeader('X-Cache', 'BYPASS')->assertJsonCount(6);
     $this->getJson('/api/hotels/h_porter')->assertOk()->assertHeader('X-Cache', 'BYPASS');

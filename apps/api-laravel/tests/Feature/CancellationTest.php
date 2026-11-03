@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+use Illuminate\Support\Facades\DB;
+
 // The cases of docs/specs/booking-cancellation.md.
 
 function createBooking(object $test, int $daysAhead): string

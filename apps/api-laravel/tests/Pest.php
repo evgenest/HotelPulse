@@ -96,3 +96,15 @@ function inParallel(int $count, Closure $work): array
 
     return $results;
 }
+
+/**
+ * Points the app at a Redis that does not answer, as in an outage. The Redis
+ * manager reads its config once, so it is rebuilt here.
+ */
+function breakRedis(): void
+{
+    config(['database.redis.default.url' => 'redis://127.0.0.1:1']);
+    app()->forgetInstance('redis');
+    app()->forgetInstance(\Illuminate\Redis\RedisManager::class);
+    Redis::clearResolvedInstances();
+}
