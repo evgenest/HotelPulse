@@ -13,7 +13,7 @@ HotelPulse — учебный full-stack проект, на котором я р
   - Бесплатно: Render free web service, один Docker-контейнер, внутри которого `supervisord` (`nodaemon=true`) запускает FrankenPHP (слушает `$PORT`), `php artisan queue:work` и `php artisan hotelpulse:relay --loop`. Это аналог `RUN_WORKER_IN_PROCESS`.
   - Опционально, ~$2–5/мес: Fly.io, process groups `app` и `worker` в `fly.toml`, `release_command` = `migrate --force`. Бесплатного тарифа у Fly нет, только trial на 2 ч или 7 дней. Managed Postgres там стоит $38, поэтому используем Neon.
   - Laravel Cloud не используем: Starter стоит $5/мес плюс usage, бесплатного тарифа нет.
-- **Внешние сервисы остаются:** Neon, CloudAMQP, Render Key Value. Изоляция от .NET-стека: отдельная ветка или база Neon (`DATABASE_URL` своя), отдельная очередь `bookings.laravel` (или vhost), префикс Redis `laravel:`.
+- **Внешние сервисы остаются:** Neon, CloudAMQP, Render Key Value. Изоляция от .NET-стека: отдельная база Neon (`DATABASE_URL` своя; ветка не подходит — она копирует таблицы и данные родителя), отдельная очередь `bookings.laravel` (или vhost), префикс Redis `laravel:`.
 - **Замеры** (если пользователь подтвердит): время ответа API и время от 202 до confirmed для каждого бэкенда, с подписью, что на free-тарифах это в основном сеть и холодный старт.
 
 ## Этап 0: фиксы конкурентности в .NET (до порта, отдельные `fix:`-коммиты)

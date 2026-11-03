@@ -133,7 +133,7 @@ apps/api-laravel/
 
 | Ресурс | .NET | Laravel |
 |---|---|---|
-| Postgres | ветка Neon `production` | отдельная ветка `laravel` |
+| Postgres | база `neondb` в ветке Neon `production` | отдельная база `hotelpulse_laravel` в той же ветке (не ветка: ветка Neon копирует таблицы и данные родителя) |
 | RabbitMQ | exchange `hotelpulse`, queue `bookings.created` | exchange `hotelpulse.laravel`, queue `bookings.created.laravel` (настраивается через env) |
 | Redis | ключи без префикса | префикс `laravel:` |
 
