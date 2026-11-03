@@ -88,12 +88,89 @@ services:
       - hotelpulse
     restart: on-failure
 
+  # Laravel implementation of the same API (docs/specs/laravel-port.md).
+  # Off by default: docker compose --profile laravel up -d --build
+  # Needs LARAVEL_APP_KEY in .env (php artisan key:generate --show).
+  # Own Postgres; RabbitMQ and Redis are shared but with their own queue,
+  # exchange and key prefix, so the two stacks never touch each other's data.
+  postgres-laravel:
+    profiles: ["laravel"]
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_USER: hotelpulse
+      POSTGRES_PASSWORD: hotelpulse
+      POSTGRES_DB: hotelpulse_laravel
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_laravel_data:/var/lib/postgresql/data
+    networks:
+      - hotelpulse
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hotelpulse -d hotelpulse_laravel"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  api-laravel:
+    profiles: ["laravel"]
+    build: ./apps/api-laravel
+    command: ["web"]
+    ports:
+      - "8081:8080"
+    environment: &laravel-env
+      APP_KEY: ${LARAVEL_APP_KEY:-}
+      DATABASE_URL: postgres://hotelpulse:hotelpulse@postgres-laravel:5432/hotelpulse_laravel
+      REDIS_URL: redis://redis:6379/1
+      AMQP_URL: amqp://hotelpulse:hotelpulse@rabbitmq:5672/
+      CORS_ORIGINS: http://localhost:3000
+    depends_on:
+      postgres-laravel:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - hotelpulse
+    restart: on-failure
+
+  relay-laravel:
+    profiles: ["laravel"]
+    build: ./apps/api-laravel
+    command: ["relay"]
+    environment: *laravel-env
+    healthcheck:
+      disable: true  # no HTTP server in this process
+    depends_on:
+      api-laravel:
+        condition: service_healthy
+    networks:
+      - hotelpulse
+    restart: on-failure
+
+  worker-laravel:
+    profiles: ["laravel"]
+    build: ./apps/api-laravel
+    command: ["consume"]
+    environment: *laravel-env
+    healthcheck:
+      disable: true  # no HTTP server in this process
+    depends_on:
+      api-laravel:
+        condition: service_healthy
+    networks:
+      - hotelpulse
+    restart: on-failure
+
   web:
     build: ./apps/web
     ports:
       - "3000:3000"
     environment:
       NUXT_PUBLIC_API_BASE: http://localhost:8080
+      # Set to http://localhost:8081 with the laravel profile to show the switch.
+      NUXT_PUBLIC_API_BASE_LARAVEL: ${NUXT_PUBLIC_API_BASE_LARAVEL:-}
     depends_on:
       api:
         condition: service_healthy
@@ -106,3 +183,4 @@ networks:
 
 volumes:
   postgres_data:
+  postgres_laravel_data:

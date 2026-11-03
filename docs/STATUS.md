@@ -27,7 +27,7 @@
 | 7 | Outbox relay (confirms + mandatory) и consumer (prefetch 1, DeliveryPolicy, SIGTERM) на php-amqplib | ✅ |
 | 8 | Интеграционные тесты (включая параллельные) + CI | ✅ 147 тестов; job `laravel` в CI (PHP 8.5, Pint, composer audit, Pest, параллельные ×3) |
 | 9 | Переключатель «.NET / Laravel» в шапке; своя история бронирований на каждый бэкенд; без `NUXT_PUBLIC_API_BASE_LARAVEL` переключатель скрыт | ✅ (typecheck; в браузере проверю после деплоя) |
-| 10 | Деплой (Render, Docker + supervisord) и документация | 🔧 в работе: образ готов и проверен (режим `all`: бронирование → `confirmed`, не root, healthy, SIGTERM за 2 с). Дальше compose, render.yaml, документация |
+| 10 | Деплой (Render, Docker + supervisord) и документация | 🔧 в работе: образ проверен; `docker-compose.yml` (профиль `laravel`) и `render.yaml` (сервис `hotelpulse-api-laravel`) готовы. Осталось — документация (api.md/api.ru.md, README, DEPLOY, CHANGELOG) |
 
 ## Как продолжить в новой сессии
 
@@ -44,6 +44,8 @@
 - CI на GitHub таких ограничений не имеет.
 
 ## Журнал
+
+- 2026-11-03 — compose: Laravel в профиле `laravel` (обычный `docker compose up` не меняется), свой Postgres на 5433, API на 8081. У relay и worker отключён HTTP-healthcheck из Dockerfile, иначе Docker считал бы их `unhealthy`. Render: третий бесплатный сервис в режиме `all`, `APP_KEY` генерирует Render. CI собирает и Laravel-образ.
 
 - 2026-11-03 — образ Laravel проверен в режиме `all`. Найдено и исправлено: (1) Octane не стартует, если остался файл состояния `storage/logs/octane-server-state.json` — после падения веб-процесса supervisord перезапускал бы его бесконечно; entrypoint теперь удаляет файл. (2) Порт администрирования Caddy (2019) сделан настраиваемым (`OCTANE_ADMIN_PORT`).
 

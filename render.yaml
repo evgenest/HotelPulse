@@ -3,6 +3,14 @@
 # The API process also runs the booking consumer because the free plan has
 # no background workers. Migrations, including the hotel catalog, run when
 # the API process starts.
+#
+# hotelpulse-api-laravel is the Laravel implementation of the same API. It
+# runs web, outbox relay and worker in one container under supervisord, and
+# uses its own Neon branch, its own RabbitMQ exchange and queue, and its own
+# Redis key prefix (docs/specs/laravel-port.md → isolation).
+#
+# Free web services sleep after 15 idle minutes; the worker inside sleeps
+# with them, and pending bookings finish after the next request wakes it.
 
 services:
   - type: web
@@ -34,6 +42,39 @@ services:
           envVarKey: RENDER_EXTERNAL_URL
 
   - type: web
+    name: hotelpulse-api-laravel
+    runtime: docker
+    region: frankfurt
+    plan: free
+    dockerfilePath: ./apps/api-laravel/Dockerfile
+    dockerContext: ./apps/api-laravel
+    dockerCommand: hotelpulse all
+    healthCheckPath: /health
+    envVars:
+      - key: APP_KEY
+        generateValue: true
+      - key: DATABASE_URL
+        sync: false
+      - key: DATABASE_URL_UNPOOLED
+        sync: false
+      - key: AMQP_URL
+        sync: false
+      - key: REDIS_URL
+        fromService:
+          name: hotelpulse-cache
+          type: keyvalue
+          property: connectionString
+      - key: HOTELPULSE_CONFIRM_PROBABILITY
+        value: "1"
+      - key: OCTANE_WORKERS
+        value: "2"
+      - key: CORS_ORIGINS
+        fromService:
+          name: hotelpulse-web
+          type: web
+          envVarKey: RENDER_EXTERNAL_URL
+
+  - type: web
     name: hotelpulse-web
     runtime: docker
     region: frankfurt
@@ -45,6 +86,11 @@ services:
       - key: NUXT_PUBLIC_API_BASE
         fromService:
           name: hotelpulse-api
+          type: web
+          envVarKey: RENDER_EXTERNAL_URL
+      - key: NUXT_PUBLIC_API_BASE_LARAVEL
+        fromService:
+          name: hotelpulse-api-laravel
           type: web
           envVarKey: RENDER_EXTERNAL_URL
 
