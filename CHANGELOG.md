@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.1.0 — 2026-11-03
+
+- Laravel implementation of the API, outbox relay and worker in
+  `apps/api-laravel` (PHP 8.5, Laravel 13, Octane on FrankenPHP), built from
+  `docs/specs/laravel-port.md`. Same contract, same SQL schema files, same
+  concurrency rules; 147 Pest tests including the parallel scenarios.
+- Web app: a .NET / Laravel switch in the header when
+  `NUXT_PUBLIC_API_BASE_LARAVEL` is set; booking history is kept per backend.
+- Docker Compose profile `laravel`, a Render service for the Laravel API, and
+  a Laravel job in CI (Pint, composer audit, Pest, parallel tests three times).
+- Laravel API extras: JSON logs with `X-Request-Id`, `GET /health/live`,
+  security headers, a per-client booking rate limit that is skipped when
+  Redis is down, a bare `500` body.
+
 ## 1.0.3 — 2026-11-03
 
 Concurrency audit before the Laravel port. Each fix has an ADR in `docs/adr/`.

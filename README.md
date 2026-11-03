@@ -31,11 +31,24 @@ If the worker is down, the message stays in RabbitMQ and the booking stays `pend
 
 Hotel list, hotel detail, and availability are cached in Redis. A booking write increments a version key, so the next read misses and loads PostgreSQL. Entries also expire after 60 seconds. Responses carry `X-Cache: HIT`, `MISS`, or `BYPASS`.
 
+## Two implementations of one API
+
+The same HTTP contract ([`docs/api.md`](docs/api.md)) is implemented twice:
+
+| | .NET | Laravel |
+|---|---|---|
+| Code | `apps/api`, `apps/worker`, `apps/HotelPulse.*` | `apps/api-laravel` |
+| Runtime | ASP.NET Core, .NET 10 | PHP 8.5, Laravel 13, Octane on FrankenPHP |
+| Tests | xUnit + Testcontainers | Pest, against real Postgres, Redis and RabbitMQ |
+
+The Laravel version was written to learn Laravel on a project whose rules were already pinned down, spec first ([`docs/specs/laravel-port.md`](docs/specs/laravel-port.md)) and with Claude Code. Both versions keep the same concurrency rules in SQL ([`docs/adr/`](docs/adr/README.md)), run the same scenarios as tests, including the parallel ones, and use the same schema files. Each has its own database, queue and cache keys, so they can run side by side. The web app has a **.NET / Laravel** switch in the header when both are configured.
+
 ## Stack
 
 | Piece | Where |
 |---|---|
 | C# / .NET 10 | `apps/api`, `apps/worker`, shared domain and infrastructure projects |
+| PHP 8.5 / Laravel 13 | `apps/api-laravel`: the same API, outbox relay and worker |
 | PostgreSQL 18 | Hotels, rooms, bookings. SQL migrations, exclusion constraint, partial indexes |
 | Redis 8 | Cache for catalog and availability reads |
 | RabbitMQ 4 | Durable `bookings.created` queue, manual ack, transactional outbox |
@@ -56,6 +69,15 @@ docker compose up -d --build
 
 curl -fsS http://localhost:8080/health
 curl -fsS http://localhost:8080/api/hotels
+```
+
+The Laravel API is in the `laravel` profile. Put a key in `.env` first:
+
+```bash
+echo "LARAVEL_APP_KEY=base64:$(openssl rand -base64 32)" >> .env
+echo "NUXT_PUBLIC_API_BASE_LARAVEL=http://localhost:8081" >> .env
+docker compose --profile laravel up -d --build
+curl -fsS http://localhost:8081/health
 ```
 
 The app is at <http://localhost:3000>. RabbitMQ management is at <http://localhost:15672> (`hotelpulse` / `hotelpulse`).
@@ -93,6 +115,14 @@ npm test                    # both
 npm run typecheck           # Nuxt / Vue
 ```
 
+Laravel (PHP 8.5 with `pdo_pgsql`, `redis`, `pcntl`, `sockets`, `bcmath`; set `DATABASE_URL`, `REDIS_URL`, `AMQP_URL`):
+
+```bash
+cd apps/api-laravel && composer install
+./vendor/bin/pest          # unit + feature, including parallel requests
+./vendor/bin/pint --test   # code style
+```
+
 Integration tests use Testcontainers when Docker is available and `POSTGRES_URI` is unset. Set `POSTGRES_URI`, `REDIS_URI`, and `RABBITMQ_URI` to point them at services you already started. CI does that with service containers, then builds the three images. See [`.github/workflows/ci.yml`](.github/workflows/ci.yml).
 
 `HOTELPULSE_CONFIRM_PROBABILITY` defaults to `0.9`, so a live booking is occasionally rejected with "Room became unavailable during processing." Set it to `1` when you want every stay to confirm. `HOTELPULSE_STEP_DELAY_MS` replaces the 700 / 800 / 900 ms pipeline delays; tests set it to `0`.
@@ -127,6 +157,8 @@ A free Render demo uses [`render.yaml`](render.yaml). The API and the Nuxt serve
 apps/api/                         HTTP API
 apps/worker/                      queue consumer
 apps/web/                         Nuxt app
+apps/api-laravel/                 Laravel implementation of the API, relay and worker
+docs/adr/                         architecture decision records and a glossary (Russian)
 apps/HotelPulse.Domain/           validation, status transitions, timeline, delivery policy
 apps/HotelPulse.Infrastructure/   SQL migrations, repositories, Redis, outbox, consumer
 tests/                            unit and integration tests

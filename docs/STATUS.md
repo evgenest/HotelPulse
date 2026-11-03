@@ -14,7 +14,7 @@
 
 Проверка: unit 101/101, integration 19/19, 8 прогонов подряд без падений.
 
-## Этап 1+ — Laravel-порт
+## Этап 1+ — Laravel-порт ✅ (версия 1.1.0)
 
 | # | Задача | Статус |
 |---|---|---|
@@ -27,14 +27,17 @@
 | 7 | Outbox relay (confirms + mandatory) и consumer (prefetch 1, DeliveryPolicy, SIGTERM) на php-amqplib | ✅ |
 | 8 | Интеграционные тесты (включая параллельные) + CI | ✅ 147 тестов; job `laravel` в CI (PHP 8.5, Pint, composer audit, Pest, параллельные ×3) |
 | 9 | Переключатель «.NET / Laravel» в шапке; своя история бронирований на каждый бэкенд; без `NUXT_PUBLIC_API_BASE_LARAVEL` переключатель скрыт | ✅ (typecheck; в браузере проверю после деплоя) |
-| 10 | Деплой (Render, Docker + supervisord) и документация | 🔧 в работе: образ проверен; `docker-compose.yml` (профиль `laravel`) и `render.yaml` (сервис `hotelpulse-api-laravel`) готовы. Осталось — документация (api.md/api.ru.md, README, DEPLOY, CHANGELOG) |
+| 10 | Деплой (Render, Docker + supervisord) и документация | ✅ образ, compose (профиль `laravel`), `render.yaml`, документация на двух языках, CHANGELOG 1.1.0 |
 
 ## Как продолжить в новой сессии
 
 1. `git checkout claude/epic-cori-g8qizf && git pull`
 2. Прочитать этот файл, план и `docs/adr/`.
 3. .NET-тесты в облачной сессии: установить SDK (`dotnet-install.sh --jsonfile global.json`), запустить `dockerd`, затем `npm run test:unit` и `npm run test:integration`.
-4. Следующая задача — пункт 10 этапа 1: Dockerfile + supervisord для Laravel, сервисы в `docker-compose.yml` и `render.yaml`, документация. Проверить, что job `laravel` в CI зелёный. Запуск тестов PHP: `docker run --rm -v $PWD/apps/api-laravel:/app -w /app <образ PHP 8.5 с pdo_pgsql, redis, pcntl, sockets, bcmath> ./vendor/bin/pest`.
+4. Порт закончен. Что осталось (не блокирует):
+   - **Larastan** — добавить там, где доступны архивы GitHub: `composer require --dev larastan/larastan`, затем `phpstan analyse` в CI;
+   - **деплой на Render** — синхронизировать Blueprint, завести ветку Neon `laravel`, проверить переключатель в браузере;
+   - **нагрузочный smoke-тест k6** и `docs/benchmarks.md` (спека → «Нагрузочная проверка»). Запуск тестов PHP: `docker run --rm -v $PWD/apps/api-laravel:/app -w /app <образ PHP 8.5 с pdo_pgsql, redis, pcntl, sockets, bcmath> ./vendor/bin/pest`.
 
 ### Известные ограничения облачной сессии (не проекта)
 
@@ -44,6 +47,8 @@
 - CI на GitHub таких ограничений не имеет.
 
 ## Журнал
+
+- 2026-11-03 — документация: README/README.ru (раздел «Две реализации»), api.md/api.ru.md, DEPLOY.md (Laravel на Render), CHANGELOG 1.1.0, версия 1.1.0 во всех трёх местах.
 
 - 2026-11-03 — compose: Laravel в профиле `laravel` (обычный `docker compose up` не меняется), свой Postgres на 5433, API на 8081. У relay и worker отключён HTTP-healthcheck из Dockerfile, иначе Docker считал бы их `unhealthy`. Render: третий бесплатный сервис в режиме `all`, `APP_KEY` генерирует Render. CI собирает и Laravel-образ.
 

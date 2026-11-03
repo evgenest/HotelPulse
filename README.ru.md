@@ -26,10 +26,23 @@ flowchart LR
 
 Список отелей, карточка отеля и доступность кэшируются в Redis. Запись брони увеличивает версию ключа, поэтому следующее чтение идёт в PostgreSQL. Записи также живут 60 секунд. Ответы несут `X-Cache: HIT`, `MISS` или `BYPASS`.
 
+## Две реализации одного API
+
+Один и тот же HTTP-контракт ([`docs/api.ru.md`](docs/api.ru.md)) реализован дважды:
+
+| | .NET | Laravel |
+|---|---|---|
+| Код | `apps/api`, `apps/worker`, `apps/HotelPulse.*` | `apps/api-laravel` |
+| Среда | ASP.NET Core, .NET 10 | PHP 8.5, Laravel 13, Octane на FrankenPHP |
+| Тесты | xUnit + Testcontainers | Pest, на настоящих Postgres, Redis и RabbitMQ |
+
+Laravel-версия написана, чтобы освоить Laravel на проекте с уже выверенными правилами: сначала спецификация ([`docs/specs/laravel-port.md`](docs/specs/laravel-port.md)), затем код, с Claude Code. Обе версии держат одни и те же правила конкурентности в SQL ([`docs/adr/`](docs/adr/README.md)), проходят одни и те же сценарии тестов, включая параллельные, и используют одни и те же файлы схемы. У каждой своя база, очередь и ключи кэша, поэтому они работают одновременно. Если настроены обе, в шапке приложения есть переключатель **.NET / Laravel**.
+
 ## Стек
 
 | Часть | Где |
 |---|---|
+| PHP 8.5 / Laravel 13 | `apps/api-laravel`: то же API, outbox relay и worker |
 | C# / .NET 10 | `apps/api`, `apps/worker`, общие проекты домена и инфраструктуры |
 | PostgreSQL 18 | Отели, номера, брони. SQL-миграции, exclusion-constraint, частичные индексы |
 | Redis 8 | Кэш каталога и чтений доступности |
