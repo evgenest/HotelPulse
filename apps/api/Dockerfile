@@ -1,5 +1,6 @@
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
+COPY Directory.Build.props ./
 COPY apps/HotelPulse.Domain/HotelPulse.Domain.csproj apps/HotelPulse.Domain/
 COPY apps/HotelPulse.Infrastructure/HotelPulse.Infrastructure.csproj apps/HotelPulse.Infrastructure/
 COPY apps/api/HotelPulse.Api.csproj apps/api/
