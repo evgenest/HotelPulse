@@ -21,8 +21,8 @@
 | 1 | Спека [`docs/specs/laravel-port.md`](specs/laravel-port.md) (ревью делегировано владельцем) | ✅ |
 | 2 | Скелет `apps/api-laravel`: PHP 8.5.12, Laravel 13.39.0, Octane 2.22, php-amqplib 3.7.5, Pest 5.3.5 | ✅ |
 | 3 | Domain (36 классов в `app/Domain`) + Pest unit-тесты (100, все из .NET + новые) | ✅ |
-| 4 | Миграции (SQL 001–003) | ⏭ следующий шаг |
-| 5 | Репозитории (CAS, advisory lock, replay — как в ADR-0001…0005) | ⏳ |
+| 4 | Миграции: SQL 001–003 побайтово как в .NET, `hotelpulse:migrate` с advisory lock, тест на совпадение | ✅ |
+| 5 | Репозитории (CAS, advisory lock, replay — как в ADR-0001…0005) | ⏭ следующий шаг |
 | 6 | HTTP-эндпоинты | ⏳ |
 | 7 | Outbox relay (с confirms) + consumer | ⏳ |
 | 8 | Интеграционные тесты (включая параллельные) + CI | ⏳ |
@@ -34,7 +34,7 @@
 1. `git checkout claude/epic-cori-g8qizf && git pull`
 2. Прочитать этот файл, план и `docs/adr/`.
 3. .NET-тесты в облачной сессии: установить SDK (`dotnet-install.sh --jsonfile global.json`), запустить `dockerd`, затем `npm run test:unit` и `npm run test:integration`.
-4. Следующая задача — пункт 4 этапа 1: миграции. Запуск тестов PHP: `docker run --rm -v $PWD/apps/api-laravel:/app -w /app <образ PHP 8.5 с pdo_pgsql, redis, pcntl, sockets, bcmath> ./vendor/bin/pest`.
+4. Следующая задача — пункт 5 этапа 1: репозитории. Запуск тестов PHP: `docker run --rm -v $PWD/apps/api-laravel:/app -w /app <образ PHP 8.5 с pdo_pgsql, redis, pcntl, sockets, bcmath> ./vendor/bin/pest`.
 
 ### Известные ограничения облачной сессии (не проекта)
 
@@ -44,6 +44,8 @@
 - CI на GitHub таких ограничений не имеет.
 
 ## Журнал
+
+- 2026-11-03 — миграции Laravel. Найдено: `migrate --isolated` не защищает при кэше `array`. Сделана своя команда с advisory lock в Postgres, как в .NET. Проверено на Postgres 18: 6 таблиц, constraint `bookings_no_overlapping_stay`, 6 отелей; повторный запуск — «Nothing to migrate».
 
 - 2026-11-03 — Domain перенесён: те же правила, тексты ошибок и формат JSON, что в .NET. Деньги считаются строками через bcmath, без float. Даты строго `yyyy-MM-dd`, несуществующие (30 февраля) отклоняются. Unit: 100/100, Pint чистый.
 
