@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.0.2 — 2026-11-03
+
+- Header: the history button is labelled "Bookings" again on every screen
+  size, matching the panel it opens. It no longer switches to "Hide"; an open
+  panel shows as a pressed button instead.
+- Hero: the two buttons wrap on 320 px screens instead of overflowing.
+
 ## 1.0.1 — 2026-11-03
 
 - Phones: the page no longer grows wider than the screen. The layout grid
