@@ -18,6 +18,7 @@ final readonly class RoomAvailability implements JsonSerializable
         public bool $available,
     ) {}
 
+    /** @return array<string, mixed> */
     public function jsonSerialize(): array
     {
         return [

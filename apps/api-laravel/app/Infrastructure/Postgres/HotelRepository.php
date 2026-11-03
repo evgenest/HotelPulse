@@ -67,7 +67,7 @@ final class HotelRepository
     /** @return list<Hotel> */
     public function list(): array
     {
-        return array_map(self::map(...), DB::select(self::HotelSql.' ORDER BY h.name'));
+        return array_values(array_map(self::map(...), DB::select(self::HotelSql.' ORDER BY h.name')));
     }
 
     public function get(string $id): ?Hotel
@@ -86,28 +86,39 @@ final class HotelRepository
             'check_out' => (string) $checkOut,
         ]);
 
-        return array_map(static fn (object $r): RoomAvailability => new RoomAvailability(
-            $r->id, $r->type, (int) $r->capacity, $r->price, (int) $r->sqm, (bool) $r->available,
-        ), $rows);
+        return array_values(array_map(static fn (object $r): RoomAvailability => new RoomAvailability(
+            Row::str($r, 'id'),
+            Row::str($r, 'type'),
+            Row::int($r, 'capacity'),
+            Row::numeric($r, 'price'),
+            Row::int($r, 'sqm'),
+            Row::bool($r, 'available'),
+        ), $rows));
     }
 
     private static function map(object $row): Hotel
     {
-        /** @var list<array{id: string, type: string, capacity: int, price: string, sqm: int}> $rooms */
-        $rooms = json_decode($row->rooms, true, 8, JSON_THROW_ON_ERROR);
+        /** @var list<object> $rooms */
+        $rooms = json_decode(Row::str($row, 'rooms'), false, 8, JSON_THROW_ON_ERROR);
         /** @var list<string> $amenities */
-        $amenities = json_decode($row->amenities ?? '[]', true, 4, JSON_THROW_ON_ERROR) ?? [];
+        $amenities = json_decode(Row::strOrNull($row, 'amenities') ?? '[]', true, 4, JSON_THROW_ON_ERROR);
 
         return new Hotel(
-            $row->id,
-            $row->name,
-            $row->city,
-            (int) $row->rating,
-            $row->glyph,
-            (string) $row->price_from,
-            $row->description,
+            Row::str($row, 'id'),
+            Row::str($row, 'name'),
+            Row::str($row, 'city'),
+            Row::int($row, 'rating'),
+            Row::str($row, 'glyph'),
+            Row::numeric($row, 'price_from'),
+            Row::str($row, 'description'),
             $amenities,
-            array_map(static fn (array $r): Room => new Room($r['id'], $r['type'], (int) $r['capacity'], (string) $r['price'], (int) $r['sqm']), $rooms),
+            array_map(static fn (object $r): Room => new Room(
+                Row::str($r, 'id'),
+                Row::str($r, 'type'),
+                Row::int($r, 'capacity'),
+                Row::numeric($r, 'price'),
+                Row::int($r, 'sqm'),
+            ), $rooms),
         );
     }
 }

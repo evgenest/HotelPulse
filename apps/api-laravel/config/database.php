@@ -5,7 +5,9 @@ declare(strict_types=1);
 // Connection URLs use the same variable names as the .NET services
 // (DATABASE_URL / POSTGRES_URI, REDIS_URL / REDIS_URI). See .env.example.
 
-$databaseUrl = env('DATABASE_URL', env('POSTGRES_URI'));
+$text = static fn (mixed $value): ?string => is_string($value) && $value !== '' ? $value : null;
+
+$databaseUrl = $text(env('DATABASE_URL')) ?? $text(env('POSTGRES_URI'));
 
 $pgsql = static fn (?string $url): array => [
     'driver' => 'pgsql',
@@ -31,7 +33,7 @@ return [
         'pgsql' => $pgsql($databaseUrl),
 
         // Direct URL for migrations (session state, DDL).
-        'pgsql_direct' => $pgsql(env('DATABASE_URL_UNPOOLED') ?: $databaseUrl),
+        'pgsql_direct' => $pgsql($text(env('DATABASE_URL_UNPOOLED')) ?? $databaseUrl),
     ],
 
     'migrations' => [

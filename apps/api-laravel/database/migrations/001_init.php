@@ -14,6 +14,7 @@ return new class extends Migration
 
     public function up(): void
     {
-        DB::unprepared((string) file_get_contents(database_path('sql/001_init.sql')));
+        // A trusted file from this repository, run as is (PDO::exec runs several statements).
+        DB::connection()->getPdo()->exec((string) file_get_contents(database_path('sql/001_init.sql')));
     }
 };

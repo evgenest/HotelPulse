@@ -17,6 +17,7 @@ final readonly class Room implements JsonSerializable
         public int $sqm,
     ) {}
 
+    /** @return array<string, mixed> */
     public function jsonSerialize(): array
     {
         return [

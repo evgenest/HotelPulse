@@ -31,8 +31,7 @@ final class BookingPublisher
     public function publish(BookingMessage $message): void
     {
         $channel = $this->channel();
-        $this->nacked = false;
-        $this->returned = false;
+        $this->takeFailure(); // drop anything left by a publish that threw mid-wait
 
         $channel->basic_publish(
             new AMQPMessage(json_encode($message, JSON_THROW_ON_ERROR), [
@@ -45,12 +44,29 @@ final class BookingPublisher
         );
         $channel->wait_for_pending_acks_returns(5.0);
 
-        if ($this->returned) {
-            throw new RuntimeException("Broker returned booking {$message->bookingId}: no queue is bound.");
+        $failure = $this->takeFailure();
+        if ($failure !== null) {
+            throw new RuntimeException("Broker {$failure} booking {$message->bookingId}.");
         }
-        if ($this->nacked) {
-            throw new RuntimeException("Broker nacked booking {$message->bookingId}.");
-        }
+    }
+
+    /**
+     * What the confirm callbacks reported during the wait, reset for the next
+     * publish: "returned" (no queue is bound), "nacked", or null when acked.
+     *
+     * @phpstan-impure
+     */
+    private function takeFailure(): ?string
+    {
+        $failure = match (true) {
+            $this->returned => 'returned (no queue is bound)',
+            $this->nacked => 'nacked',
+            default => null,
+        };
+        $this->returned = false;
+        $this->nacked = false;
+
+        return $failure;
     }
 
     public function close(): void

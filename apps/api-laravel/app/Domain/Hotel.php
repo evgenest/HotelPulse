@@ -36,6 +36,7 @@ final readonly class Hotel implements JsonSerializable
         return null;
     }
 
+    /** @return array<string, mixed> */
     public function jsonSerialize(): array
     {
         return [

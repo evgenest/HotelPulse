@@ -19,7 +19,9 @@ final class Money
             return (string) $value;
         }
         if (is_float($value) && is_finite($value)) {
-            return rtrim(rtrim(number_format($value, 10, '.', ''), '0'), '.');
+            $text = rtrim(rtrim(number_format($value, 10, '.', ''), '0'), '.');
+
+            return is_numeric($text) ? $text : null;
         }
         if (is_string($value) && is_numeric($value)) {
             return $value;
@@ -28,13 +30,19 @@ final class Money
         return null;
     }
 
-    /** @param numeric-string $a @param numeric-string $b */
+    /**
+     * @param  numeric-string  $a
+     * @param  numeric-string  $b
+     */
     public static function equals(string $a, string $b): bool
     {
         return bccomp($a, $b, self::Scale) === 0;
     }
 
-    /** @param numeric-string $price @return numeric-string */
+    /**
+     * @param  numeric-string  $price
+     * @return numeric-string
+     */
     public static function times(string $price, int $count): string
     {
         return bcmul($price, (string) $count, self::Scale);
@@ -48,7 +56,11 @@ final class Money
         return str_contains($trimmed, '.') ? (float) $trimmed : (int) $trimmed;
     }
 
-    /** Price as .NET prints a numeric(10,2) decimal: "150.00". */
+    /**
+     * Price as .NET prints a numeric(10,2) decimal: "150.00".
+     *
+     * @param  numeric-string  $amount
+     */
     public static function display(string $amount): string
     {
         return bcadd($amount, '0', self::Scale);

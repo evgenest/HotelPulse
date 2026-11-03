@@ -103,7 +103,7 @@ final class BookingRepository implements BookingStore
     {
         $rows = DB::select('SELECT '.self::Columns.' FROM bookings ORDER BY created_at DESC LIMIT :limit', ['limit' => $limit]);
 
-        return array_map(self::map(...), $rows);
+        return array_values(array_map(self::map(...), $rows));
     }
 
     /**
@@ -122,7 +122,8 @@ final class BookingRepository implements BookingStore
         );
         $byId = [];
         foreach ($rows as $row) {
-            $byId[$row->id] = self::map($row);
+            $booking = self::map($row);
+            $byId[$booking->id] = $booking;
         }
 
         return array_values(array_filter(array_map(static fn (string $id): ?Booking => $byId[$id] ?? null, $ids)));
@@ -258,14 +259,14 @@ final class BookingRepository implements BookingStore
         if ($stored === null) {
             return null;
         }
-        if (! hash_equals($stored->request_hash, $requestHash)) {
+        if (! hash_equals(Row::str($stored, 'request_hash'), $requestHash)) {
             throw new IdempotencyConflictException;
         }
 
-        return $this->find($stored->booking_id);
+        return $this->find(Row::str($stored, 'booking_id'));
     }
 
-    public static function sqlState(QueryException $e): ?string
+    public static function sqlState(QueryException $e): string
     {
         $info = $e->errorInfo;
 
@@ -290,26 +291,27 @@ final class BookingRepository implements BookingStore
     private static function map(object $row): Booking
     {
         /** @var list<array{label: string, done: bool, time?: ?string, current: bool}> $events */
-        $events = json_decode($row->events ?: '[]', true, 8, JSON_THROW_ON_ERROR);
+        $events = json_decode(Row::str($row, 'events') ?: '[]', true, 8, JSON_THROW_ON_ERROR);
         $utc = new DateTimeZone('UTC');
+        $cancelledAt = Row::strOrNull($row, 'cancelled_at');
 
         return new Booking(
-            $row->id,
-            $row->hotel_id,
-            $row->hotel_name,
-            $row->room_id,
-            $row->room_type,
-            $row->guest_name,
-            LocalDate::parse((string) $row->check_in),
-            LocalDate::parse((string) $row->check_out),
-            (int) $row->nights,
-            (string) $row->total,
-            $row->status,
-            $row->confirmation_code,
-            $row->rejection_reason,
-            (new DateTimeImmutable((string) $row->created_at))->setTimezone($utc),
+            Row::str($row, 'id'),
+            Row::str($row, 'hotel_id'),
+            Row::str($row, 'hotel_name'),
+            Row::str($row, 'room_id'),
+            Row::str($row, 'room_type'),
+            Row::str($row, 'guest_name'),
+            LocalDate::parse(Row::str($row, 'check_in')),
+            LocalDate::parse(Row::str($row, 'check_out')),
+            Row::int($row, 'nights'),
+            Row::numeric($row, 'total'),
+            Row::str($row, 'status'),
+            Row::strOrNull($row, 'confirmation_code'),
+            Row::strOrNull($row, 'rejection_reason'),
+            (new DateTimeImmutable(Row::str($row, 'created_at')))->setTimezone($utc),
             array_map(BookingEvent::fromArray(...), $events),
-            $row->cancelled_at === null ? null : (new DateTimeImmutable((string) $row->cancelled_at))->setTimezone($utc),
+            $cancelledAt === null ? null : (new DateTimeImmutable($cancelledAt))->setTimezone($utc),
         );
     }
 }

@@ -1,0 +1,15 @@
+# Static analysis (ADR-0014): Larastan understands Laravel's facades and
+# container. Level 8 as in docs/specs/laravel-port.md. No baseline: every
+# finding is fixed, not hidden.
+includes:
+    - vendor/larastan/larastan/extension.neon
+
+parameters:
+    level: 8
+    paths:
+        - app
+        - bootstrap/app.php
+        - config
+        - database
+        - routes
+    tmpDir: storage/framework/cache/phpstan
