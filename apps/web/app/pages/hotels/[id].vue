@@ -194,7 +194,8 @@ async function handleBookingSubmit(data: {
     navigateTo(`/bookings/${result.id}`)
   } catch (err) {
     console.error('Booking failed:', err)
-    alert('Booking failed. Is the API running?')
+    const data = (err as { data?: { error?: string } }).data
+    alert(data?.error ?? 'Booking failed. Is the API running?')
   }
 }
 

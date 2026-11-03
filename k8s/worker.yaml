@@ -18,7 +18,15 @@ spec:
           image: hotelpulse-worker:dev
           imagePullPolicy: Never
           env:
-            - name: MONGO_URI
-              value: mongodb://mongo:27017
+            - name: POSTGRES_URI
+              valueFrom:
+                secretKeyRef:
+                  name: hotelpulse
+                  key: postgres-uri
+            - name: REDIS_URI
+              value: redis:6379
             - name: RABBITMQ_URI
-              value: amqp://guest:guest@rabbitmq:5672/
+              valueFrom:
+                secretKeyRef:
+                  name: hotelpulse
+                  key: rabbitmq-uri

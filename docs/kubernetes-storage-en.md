@@ -25,7 +25,7 @@ Kubernetes works differently. Data is stored not on the host, but **inside the c
 
 ## How Storage Is Configured in This Project
 
-MongoDB in [`k8s/mongo.yaml`](../k8s/mongo.yaml) is defined as a StatefulSet with `volumeClaimTemplates`:
+PostgreSQL in [`k8s/postgres.yaml`](../k8s/postgres.yaml) is defined as a StatefulSet with `volumeClaimTemplates`:
 
 ```yaml
 volumeClaimTemplates:
@@ -42,7 +42,7 @@ When you apply this manifest, Kubernetes automatically:
 
 1. Creates a **PersistentVolumeClaim (PVC)** — a request for storage
 2. Provisions a **PersistentVolume (PV)** — the actual "virtual disk"
-3. Mounts the PV into the pod at `/data/db`
+3. Mounts the PV into the pod at `/var/lib/postgresql/data`
 
 ---
 
@@ -61,7 +61,7 @@ In both cases the data does **not** reside directly on your host as a folder or 
 
 ### `kubectl delete namespace hotelpulse`
 
-Deletes everything inside the namespace: pods, services, PVCs. Since dynamically provisioned volumes default to `reclaimPolicy: Delete`, the PV is deleted along with the PVC — MongoDB data is gone.
+Deletes everything inside the namespace: pods, services, PVCs. Since dynamically provisioned volumes default to `reclaimPolicy: Delete`, the PV is deleted along with the PVC — PostgreSQL data is gone.
 
 ### `kind delete cluster` / `minikube delete`
 
@@ -69,7 +69,7 @@ Destroys the node itself (the Docker container or VM). All storage that lived in
 
 ### Summary table
 
-| Action | MongoDB data |
+| Action | PostgreSQL data |
 |---|---|
 | `kubectl delete namespace hotelpulse` | Deleted (`Delete` reclaim policy) |
 | `kind delete cluster` / `minikube delete` | Permanently gone |
@@ -82,15 +82,11 @@ Destroys the node itself (the Docker container or VM). All storage that lived in
 
 After `kind create cluster` / `minikube start` + `kubectl apply -f k8s/` you start with a **clean slate**:
 
-- MongoDB is empty
+- PostgreSQL is empty
 - All booking data is gone
-- **Hotels will reappear automatically** — the API seeds them on startup (see `apps/api/Program.cs`)
+- **Hotels will reappear automatically** — migration `002_seed.sql` inserts the catalog when the API starts
 
-This behaviour is documented in the manifest itself [`k8s/mongo.yaml`](../k8s/mongo.yaml):
-
-```
-the API reseeds hotels on startup
-```
+Redis holds no durable data. It is a cache and comes back empty.
 
 ---
 
@@ -111,13 +107,13 @@ For local development you can use `hostPath` — mounting a host directory direc
 volumes:
   - name: data
     hostPath:
-      path: /tmp/hotelpulse-mongo   # directory on the host
+      path: /tmp/hotelpulse-postgres   # directory on the host
       type: DirectoryOrCreate
 ```
 
 This makes data survive `kubectl delete namespace`. However it does **not** survive `kind delete cluster` — the node and its filesystem are still destroyed.
 
-> For this learning project `hostPath` is unnecessary — the API seeds data automatically.
+> `hostPath` is unnecessary here — the catalog is inserted by the SQL migrations.
 
 ---
 

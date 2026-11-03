@@ -1,0 +1,14 @@
+{
+  "name": "hotelpulse",
+  "private": true,
+  "scripts": {
+    "test": "dotnet test HotelPulse.sln -c Release --nologo",
+    "test:unit": "dotnet test tests/HotelPulse.UnitTests/HotelPulse.UnitTests.csproj -c Release --nologo",
+    "test:integration": "dotnet test tests/HotelPulse.IntegrationTests/HotelPulse.IntegrationTests.csproj -c Release --nologo",
+    "typecheck": "pnpm --dir apps/web typecheck"
+  },
+  "dependencies": {
+    "@neon/config": "^1.10.0",
+    "@neon/env": "^1.6.8"
+  }
+}

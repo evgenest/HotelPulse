@@ -2,16 +2,22 @@
   "name": "hotelpulse-web",
   "private": true,
   "type": "module",
-  "packageManager": "pnpm@11.1.2+sha512.415a1cc25974731e75455c1468371be74c5aa5fb7621b50d4056d222451609f11412f23fd602e6169f1e060466641f798597e1be961a10688836a67b16569499",
+  "packageManager": "pnpm@12.16.1+sha512.091d1dee7927575661b25dab3c2ae31cafc1c54d6b71ed6a6600cf0c1cb10434a447eae14015f1b23e2e6bedeed79df94a932e2164d2832280dce3fb32f656d1",
   "scripts": {
     "build": "nuxt build",
     "dev": "nuxt dev --port 3000",
     "preview": "node .output/server/index.mjs",
-    "generate": "nuxt generate"
+    "generate": "nuxt generate",
+    "typecheck": "nuxt typecheck",
+    "test": "nuxt typecheck"
   },
   "dependencies": {
-    "nuxt": "^4.4.5",
-    "vue": "^3.5.34",
-    "vue-router": "^5.0.6"
+    "nuxt": "4.6.4",
+    "vue": "3.5.44",
+    "vue-router": "5.4.0"
+  },
+  "devDependencies": {
+    "typescript": "6.0.3",
+    "vue-tsc": "3.3.14"
   }
 }

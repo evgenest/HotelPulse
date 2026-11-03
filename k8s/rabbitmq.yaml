@@ -21,9 +21,12 @@ spec:
             - containerPort: 15672
           env:
             - name: RABBITMQ_DEFAULT_USER
-              value: guest
+              value: hotelpulse
             - name: RABBITMQ_DEFAULT_PASS
-              value: guest
+              valueFrom:
+                secretKeyRef:
+                  name: hotelpulse
+                  key: rabbitmq-password
           readinessProbe:
             exec:
               command: ["rabbitmq-diagnostics", "check_port_connectivity"]

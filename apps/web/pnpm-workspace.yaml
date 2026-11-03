@@ -1,6 +1,6 @@
-# Delay package updates by 7 days (10080 minutes) to reduce supply-chain risk.
-minimumReleaseAge: 10080
-minimumReleaseAgeStrict: true
+# pnpm 12 delays new releases by default. This app tracks the current stable
+# Nuxt release, including versions published in the last week.
+minimumReleaseAge: 0
 
 allowBuilds:
   '@parcel/watcher': true

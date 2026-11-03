@@ -10,8 +10,8 @@
 **/.output/
 **/.cache/
 
-# Docker
-.dockerignore
+# Local browser snapshots
+.playwright-mcp/
 
 # Env
 .env
@@ -20,3 +20,5 @@
 # OS
 .DS_Store
 Thumbs.db
+.neon
+node_modules/
