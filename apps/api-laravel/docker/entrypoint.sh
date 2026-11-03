@@ -32,8 +32,13 @@ migrate() {
 }
 
 web() {
+  # Octane refuses to start while its state file says a server is running.
+  # After a crash the file stays behind, and every restart would fail, so
+  # clear it: in this container only this process serves HTTP.
+  rm -f storage/logs/octane-server-state.json
   exec php artisan octane:frankenphp --host=0.0.0.0 --port="${PORT}" \
-    --workers="${OCTANE_WORKERS:-auto}" --max-requests="${OCTANE_MAX_REQUESTS:-1000}" --log-level=warn
+    --admin-port="${OCTANE_ADMIN_PORT:-2019}" --workers="${OCTANE_WORKERS:-auto}" \
+    --max-requests="${OCTANE_MAX_REQUESTS:-1000}" --log-level=warn
 }
 
 case "${1:-web}" in
