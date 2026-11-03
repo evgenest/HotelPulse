@@ -20,8 +20,8 @@
 |---|---|---|
 | 1 | Спека [`docs/specs/laravel-port.md`](specs/laravel-port.md) (ревью делегировано владельцем) | ✅ |
 | 2 | Скелет `apps/api-laravel`: PHP 8.5.12, Laravel 13.39.0, Octane 2.22, php-amqplib 3.7.5, Pest 5.3.5 | ✅ |
-| 3 | Domain + Pest unit-тесты | ⏭ следующий шаг |
-| 4 | Миграции (SQL 001–003) | ⏳ |
+| 3 | Domain (36 классов в `app/Domain`) + Pest unit-тесты (100, все из .NET + новые) | ✅ |
+| 4 | Миграции (SQL 001–003) | ⏭ следующий шаг |
 | 5 | Репозитории (CAS, advisory lock, replay — как в ADR-0001…0005) | ⏳ |
 | 6 | HTTP-эндпоинты | ⏳ |
 | 7 | Outbox relay (с confirms) + consumer | ⏳ |
@@ -34,7 +34,7 @@
 1. `git checkout claude/epic-cori-g8qizf && git pull`
 2. Прочитать этот файл, план и `docs/adr/`.
 3. .NET-тесты в облачной сессии: установить SDK (`dotnet-install.sh --jsonfile global.json`), запустить `dockerd`, затем `npm run test:unit` и `npm run test:integration`.
-4. Следующая задача — пункт 3 этапа 1: Domain + unit-тесты.
+4. Следующая задача — пункт 4 этапа 1: миграции. Запуск тестов PHP: `docker run --rm -v $PWD/apps/api-laravel:/app -w /app <образ PHP 8.5 с pdo_pgsql, redis, pcntl, sockets, bcmath> ./vendor/bin/pest`.
 
 ### Известные ограничения облачной сессии (не проекта)
 
@@ -44,6 +44,8 @@
 - CI на GitHub таких ограничений не имеет.
 
 ## Журнал
+
+- 2026-11-03 — Domain перенесён: те же правила, тексты ошибок и формат JSON, что в .NET. Деньги считаются строками через bcmath, без float. Даты строго `yyyy-MM-dd`, несуществующие (30 февраля) отклоняются. Unit: 100/100, Pint чистый.
 
 - 2026-11-03 — скелет Laravel: API-only (без views и фронтенд-сборки), подключения из тех же env-переменных, что у .NET, JSON-логи в stderr, Redis с таймаутом 250 мс и без повторов. CI #29 (повтор параллельных тестов) — зелёный.
 
