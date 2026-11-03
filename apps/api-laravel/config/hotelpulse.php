@@ -6,6 +6,9 @@ declare(strict_types=1);
 // (apps/HotelPulse.Infrastructure/HotelPulseSettings.cs).
 
 return [
+    // Keep in step with Directory.Build.props and apps/web/package.json.
+    'version' => '1.0.3',
+
     'amqp_url' => env('AMQP_URL', env('RABBITMQ_URI', 'amqp://guest:guest@localhost:5672/')),
     'exchange' => env('HOTELPULSE_EXCHANGE', 'hotelpulse.laravel'),
     'queue' => env('HOTELPULSE_QUEUE', 'bookings.created.laravel'),
@@ -15,6 +18,8 @@ return [
     // parse them exactly like the .NET worker does.
     'step_delay_ms' => env('HOTELPULSE_STEP_DELAY_MS'),
     'confirm_probability' => env('HOTELPULSE_CONFIRM_PROBABILITY'),
+
+    'booking_rate_limit_per_minute' => (int) env('HOTELPULSE_BOOKING_RATE_LIMIT', 30),
 
     'cors_origins' => array_values(array_filter(array_map('trim', explode(',', (string) env('CORS_ORIGINS', ''))))),
 ];

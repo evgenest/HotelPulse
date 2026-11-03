@@ -23,8 +23,8 @@
 | 3 | Domain (36 классов в `app/Domain`) + Pest unit-тесты (100, все из .NET + новые) | ✅ |
 | 4 | Миграции: SQL 001–003 побайтово как в .NET, `hotelpulse:migrate` с advisory lock, тест на совпадение | ✅ |
 | 5 | Репозитории (CAS, advisory lock, replay — как в ADR-0001…0005), кэш с BYPASS, классификатор ошибок | ✅ |
-| 6 | HTTP-эндпоинты | ⏭ следующий шаг |
-| 7 | Outbox relay (с confirms) + consumer | ⏳ |
+| 6 | HTTP-эндпоинты (9 маршрутов), X-Request-Id, заголовки безопасности, rate limit через Redis с пропуском при сбое, единый ответ на 500 | ✅ |
+| 7 | Outbox relay (с confirms) + consumer | ⏭ следующий шаг |
 | 8 | Интеграционные тесты (включая параллельные) + CI | ⏳ |
 | 9 | Переключатель бэкенда на фронте | ⏳ |
 | 10 | Деплой (Render, Docker + supervisord) и документация | ⏳ |
@@ -34,7 +34,7 @@
 1. `git checkout claude/epic-cori-g8qizf && git pull`
 2. Прочитать этот файл, план и `docs/adr/`.
 3. .NET-тесты в облачной сессии: установить SDK (`dotnet-install.sh --jsonfile global.json`), запустить `dockerd`, затем `npm run test:unit` и `npm run test:integration`.
-4. Следующая задача — пункт 6 этапа 1: HTTP-эндпоинты. Запуск тестов PHP: `docker run --rm -v $PWD/apps/api-laravel:/app -w /app <образ PHP 8.5 с pdo_pgsql, redis, pcntl, sockets, bcmath> ./vendor/bin/pest`.
+4. Следующая задача — пункт 7 этапа 1: outbox relay и consumer на php-amqplib. Запуск тестов PHP: `docker run --rm -v $PWD/apps/api-laravel:/app -w /app <образ PHP 8.5 с pdo_pgsql, redis, pcntl, sockets, bcmath> ./vendor/bin/pest`.
 
 ### Известные ограничения облачной сессии (не проекта)
 
@@ -44,6 +44,8 @@
 - CI на GitHub таких ограничений не имеет.
 
 ## Журнал
+
+- 2026-11-03 — HTTP-слой Laravel. Проверено вручную на Postgres + Redis: все коды из таблицы API; `X-Cache` MISS → HIT; без Redis — BYPASS за 35 мс. Решение: проверку тела запроса делает перенесённый `BookingValidator` (тексты ошибок как в .NET), а не FormRequest — иначе было бы два набора правил.
 
 - 2026-11-03 — репозитории Laravel: тот же SQL, что в .NET после фиксов этапа 0. Смоук на Postgres 18: повтор по ключу → исходное бронирование; ключ + другое тело → конфликт; пересечение → 409; отмена сохраняет шаги worker'а; CAS worker'а после отмены не срабатывает.
 
