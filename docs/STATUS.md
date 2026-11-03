@@ -22,8 +22,8 @@
 | 2 | Скелет `apps/api-laravel`: PHP 8.5.12, Laravel 13.39.0, Octane 2.22, php-amqplib 3.7.5, Pest 5.3.5 | ✅ |
 | 3 | Domain (36 классов в `app/Domain`) + Pest unit-тесты (100, все из .NET + новые) | ✅ |
 | 4 | Миграции: SQL 001–003 побайтово как в .NET, `hotelpulse:migrate` с advisory lock, тест на совпадение | ✅ |
-| 5 | Репозитории (CAS, advisory lock, replay — как в ADR-0001…0005) | ⏭ следующий шаг |
-| 6 | HTTP-эндпоинты | ⏳ |
+| 5 | Репозитории (CAS, advisory lock, replay — как в ADR-0001…0005), кэш с BYPASS, классификатор ошибок | ✅ |
+| 6 | HTTP-эндпоинты | ⏭ следующий шаг |
 | 7 | Outbox relay (с confirms) + consumer | ⏳ |
 | 8 | Интеграционные тесты (включая параллельные) + CI | ⏳ |
 | 9 | Переключатель бэкенда на фронте | ⏳ |
@@ -34,7 +34,7 @@
 1. `git checkout claude/epic-cori-g8qizf && git pull`
 2. Прочитать этот файл, план и `docs/adr/`.
 3. .NET-тесты в облачной сессии: установить SDK (`dotnet-install.sh --jsonfile global.json`), запустить `dockerd`, затем `npm run test:unit` и `npm run test:integration`.
-4. Следующая задача — пункт 5 этапа 1: репозитории. Запуск тестов PHP: `docker run --rm -v $PWD/apps/api-laravel:/app -w /app <образ PHP 8.5 с pdo_pgsql, redis, pcntl, sockets, bcmath> ./vendor/bin/pest`.
+4. Следующая задача — пункт 6 этапа 1: HTTP-эндпоинты. Запуск тестов PHP: `docker run --rm -v $PWD/apps/api-laravel:/app -w /app <образ PHP 8.5 с pdo_pgsql, redis, pcntl, sockets, bcmath> ./vendor/bin/pest`.
 
 ### Известные ограничения облачной сессии (не проекта)
 
@@ -44,6 +44,8 @@
 - CI на GitHub таких ограничений не имеет.
 
 ## Журнал
+
+- 2026-11-03 — репозитории Laravel: тот же SQL, что в .NET после фиксов этапа 0. Смоук на Postgres 18: повтор по ключу → исходное бронирование; ключ + другое тело → конфликт; пересечение → 409; отмена сохраняет шаги worker'а; CAS worker'а после отмены не срабатывает.
 
 - 2026-11-03 — миграции Laravel. Найдено: `migrate --isolated` не защищает при кэше `array`. Сделана своя команда с advisory lock в Postgres, как в .NET. Проверено на Postgres 18: 6 таблиц, constraint `bookings_no_overlapping_stay`, 6 отелей; повторный запуск — «Nothing to migrate».
 

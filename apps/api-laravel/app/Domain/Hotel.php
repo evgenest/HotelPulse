@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Domain;
 
-final readonly class Hotel
+use JsonSerializable;
+
+final readonly class Hotel implements JsonSerializable
 {
     /**
      * @param  numeric-string  $priceFrom
@@ -32,5 +34,20 @@ final readonly class Hotel
         }
 
         return null;
+    }
+
+    public function jsonSerialize(): array
+    {
+        return [
+            'id' => $this->id,
+            'name' => $this->name,
+            'city' => $this->city,
+            'rating' => $this->rating,
+            'glyph' => $this->glyph,
+            'priceFrom' => Money::toJsonNumber($this->priceFrom),
+            'description' => $this->description,
+            'amenities' => $this->amenities,
+            'rooms' => $this->rooms,
+        ];
     }
 }
