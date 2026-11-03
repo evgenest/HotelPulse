@@ -32,8 +32,12 @@ return [
         // advisory locks are used, so PgBouncer transaction mode is fine.
         'pgsql' => $pgsql($databaseUrl),
 
-        // Direct URL for migrations (session state, DDL).
+        // Migrations: the direct URL when there is one, otherwise the pooled one.
         'pgsql_direct' => $pgsql($text(env('DATABASE_URL_UNPOOLED')) ?? $databaseUrl),
+
+        // Holds the migration lock in an open transaction while migrations run
+        // on pgsql_direct. A separate name gives it its own PDO connection.
+        'pgsql_lock' => $pgsql($text(env('DATABASE_URL_UNPOOLED')) ?? $databaseUrl),
     ],
 
     'migrations' => [

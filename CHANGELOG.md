@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.1.2 — 2026-11-03
+
+- Laravel image runs on Render: the `frankenphp` binary no longer carries the
+  `cap_net_bind_service` file capability, which made hosts that drop
+  capabilities refuse to start it ("Operation not permitted").
+- Both APIs: the migration lock is transaction-scoped and held in an open
+  transaction on its own connection. The old session lock could stay behind
+  on a pooled connection (Neon's PgBouncer) and block the next start.
+  `DATABASE_URL_UNPOOLED` is now optional. New tests in both stacks: parallel
+  migrators all finish with no lock left, and a migrator waits for a held lock.
+
 ## 1.1.1 — 2026-11-03
 
 - Laravel: Larastan (PHPStan level 8) in CI, no baseline. Fixes from its

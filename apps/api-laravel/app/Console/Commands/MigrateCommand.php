@@ -11,10 +11,14 @@ use Illuminate\Support\Facades\DB;
  * Applies migrations once even when several copies start together.
  *
  * `migrate --isolated` locks through the Laravel cache, which is per-process
- * here (array store), so it would not stop two containers. Like the .NET
- * DatabaseMigrator, this takes a session advisory lock in Postgres on the
- * direct (non-pooled) connection: PgBouncer transaction mode would drop a
- * session lock between statements.
+ * here (array store), so it would not stop two containers. Instead a
+ * transaction-scoped advisory lock is held in an open transaction on its own
+ * connection while the migrations run on another. That works through a pooler
+ * in transaction mode (Neon's PgBouncer keeps the server connection for an
+ * open transaction), and Postgres releases the lock when the transaction ends,
+ * also if this process dies. A session lock (pg_advisory_lock) could stay
+ * behind on a pooled server connection and block the next start (ADR-0011).
+ * Same approach as the .NET DatabaseMigrator.
  */
 final class MigrateCommand extends Command
 {
@@ -26,13 +30,17 @@ final class MigrateCommand extends Command
 
     public function handle(): int
     {
-        $connection = DB::connection('pgsql_direct');
-        $connection->statement('SELECT pg_advisory_lock(?)', [self::AdvisoryLockKey]);
+        $lock = DB::connection('pgsql_lock');
+        $lock->beginTransaction();
 
         try {
+            $lock->select('SELECT pg_advisory_xact_lock(?)', [self::AdvisoryLockKey]);
+
             return $this->call('migrate', ['--force' => true, '--database' => 'pgsql_direct']);
         } finally {
-            $connection->statement('SELECT pg_advisory_unlock(?)', [self::AdvisoryLockKey]);
+            // Ending the transaction releases the lock; nothing was written in it.
+            $lock->rollBack();
+            DB::purge('pgsql_lock');
         }
     }
 }
