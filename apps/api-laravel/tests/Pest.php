@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Domain\LocalDate;
+use Illuminate\Redis\RedisManager;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Redis;
 use Tests\TestCase;
@@ -105,6 +106,6 @@ function breakRedis(): void
 {
     config(['database.redis.default.url' => 'redis://127.0.0.1:1']);
     app()->forgetInstance('redis');
-    app()->forgetInstance(\Illuminate\Redis\RedisManager::class);
+    app()->forgetInstance(RedisManager::class);
     Redis::clearResolvedInstances();
 }
