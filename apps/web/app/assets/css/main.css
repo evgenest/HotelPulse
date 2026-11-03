@@ -106,15 +106,18 @@ button { font-family: inherit; }
 }
 
 /* ─── Layout primitives ──────────────────────────── */
+/* minmax(0, 1fr), not 1fr: a plain 1fr track grows to its widest child, and on
+   phones that pushed the page past the viewport so the browser zoomed out. */
 .shell {
   display: grid;
-  grid-template-columns: 1fr;
+  grid-template-columns: minmax(0, 1fr);
   min-height: 100vh;
 }
+.shell > * { min-width: 0; }
 .shell.with-rail {
-  grid-template-columns: 1fr 320px;
+  grid-template-columns: minmax(0, 1fr) 320px;
 }
-@media (max-width: 1100px) { .shell.with-rail { grid-template-columns: 1fr; } }
+@media (max-width: 1100px) { .shell.with-rail { grid-template-columns: minmax(0, 1fr); } }
 
 .page {
   max-width: 1240px;
@@ -127,7 +130,7 @@ button { font-family: inherit; }
 .row { display: flex; align-items: center; gap: 12px; }
 .col { display: flex; flex-direction: column; }
 .gap-2 { gap: 8px; } .gap-3 { gap: 12px; } .gap-4 { gap: 16px; } .gap-5 { gap: 20px; } .gap-6 { gap: 24px; }
-.between { display: flex; align-items: center; justify-content: space-between; }
+.between { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
 
 .divider { height: 1px; background: var(--border); width: 100%; }
 
@@ -272,7 +275,8 @@ button { font-family: inherit; }
 .hero h1 { margin-bottom: 18px; }
 .hero p.lede { font-size: 18px; color: var(--muted); max-width: 540px; line-height: 1.5; margin: 0 0 28px; }
 .hero-split { display: grid; grid-template-columns: 1.05fr .95fr; gap: 48px; align-items: center; }
-@media (max-width: 900px) { .hero-split { grid-template-columns: 1fr; gap: 32px; } }
+.hero-split > * { min-width: 0; }
+@media (max-width: 900px) { .hero-split { grid-template-columns: minmax(0, 1fr); gap: 32px; } }
 .hero-centered { text-align: center; padding: 80px 0 56px; }
 .hero-centered .lede { margin-left: auto; margin-right: auto; }
 .hero-minimal { padding: 36px 0 24px; border-bottom: 1px solid var(--border); }
@@ -285,7 +289,10 @@ button { font-family: inherit; }
   border: 1px solid var(--border); border-radius: var(--r-xl);
   padding: 20px; font-family: var(--font-mono); font-size: 12px; color: var(--ink-2);
 }
-.arch-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+.arch-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+@media (max-width: 520px) { .arch-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.arch-node { min-width: 0; }
+.arch-node .val { overflow-wrap: anywhere; }
 .arch-node {
   background: var(--surface-2); border: 1px solid var(--border);
   border-radius: 10px; padding: 12px 10px;
@@ -297,7 +304,7 @@ button { font-family: inherit; }
 .arch-node.hot .key { color: var(--accent-soft-ink); opacity: .8; }
 .arch-node.hot .val { color: var(--accent-soft-ink); }
 .arch-flow { margin-top: 14px; display: grid; gap: 8px; }
-.arch-flow .step { display: flex; align-items: center; gap: 10px; font-size: 12px; color: var(--muted); }
+.arch-flow .step { display: flex; align-items: flex-start; gap: 10px; font-size: 12px; color: var(--muted); min-width: 0; overflow-wrap: anywhere; }
 .arch-flow .step .idx {
   width: 18px; height: 18px; border-radius: 50%;
   background: var(--surface-2); color: var(--ink-2);
@@ -542,6 +549,12 @@ button { font-family: inherit; }
 .status-error { margin-top: 12px; font-size: 13px; color: var(--bad); text-align: center; }
 .nav-github { display: inline-flex; align-items: center; justify-content: center; width: 32px; padding: 0; color: var(--ink-2); }
 .nav-github:hover { color: var(--ink); }
+/* The status pills duplicate the queue panel; drop them where the header is tight. */
+@media (max-width: 560px) {
+  .nav-status { display: none; }
+  .nav-history-label { display: none; }
+  .nav-history { width: 32px; padding: 0; justify-content: center; }
+}
 
 /* Event timeline */
 .timeline {
@@ -644,6 +657,15 @@ button { font-family: inherit; }
 .history-rail {
   border-left: 1px solid var(--border); background: var(--surface);
   height: 100vh; position: sticky; top: 0; overflow-y: auto;
+}
+/* Stacked under the page: no fixed height, a top border instead of a left one. */
+@media (max-width: 1100px) {
+  .history-rail {
+    height: auto; position: static; overflow: visible;
+    border-left: 0; border-top: 1px solid var(--border);
+    scroll-margin-top: 64px;
+    padding-bottom: 72px; /* room above the minimized queue pill */
+  }
 }
 .history-rail .h-hd {
   padding: 20px 22px 14px; border-bottom: 1px solid var(--border);

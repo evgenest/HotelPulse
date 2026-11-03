@@ -5,7 +5,7 @@
         :queue-state="queueState"
         :history-open="historyOpen"
         @go-home="navigateTo('/')"
-        @toggle-history="historyOpen = !historyOpen"
+        @toggle-history="toggleHistory"
       />
 
       <main class="page">
@@ -137,6 +137,7 @@ const { queueState, onAck } = useQueueStore()
 const { bookingHistory, updateStatus, clearHistory, refreshHistory, startHistorySync } = useBookingStore()
 
 const historyOpen = useHistoryRailState()
+const toggleHistory = useToggleHistoryRail()
 const booking = ref<Booking | null>(null)
 const loading = ref(true)
 let stopHistorySync: (() => void) | null = null

@@ -5,7 +5,7 @@
         :queue-state="queueState"
         :history-open="historyOpen"
         @go-home="navigateTo('/')"
-        @toggle-history="historyOpen = !historyOpen"
+        @toggle-history="toggleHistory"
       />
 
       <main v-if="hotel" class="page">
@@ -142,6 +142,7 @@ const { queueState, onPublish } = useQueueStore()
 const { bookingHistory, addBooking, clearHistory, refreshHistory, startHistorySync } = useBookingStore()
 
 const historyOpen = useHistoryRailState()
+const toggleHistory = useToggleHistoryRail()
 const showForm = ref(false)
 let stopHistorySync: (() => void) | null = null
 

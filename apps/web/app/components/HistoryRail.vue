@@ -1,5 +1,5 @@
 <template>
-  <aside class="history-rail">
+  <aside ref="rail" class="history-rail" aria-label="Booking history">
     <div class="h-hd">
       <div class="title">Bookings</div>
       <div class="row gap-2">
@@ -52,4 +52,25 @@ defineProps<{
 }>()
 
 defineEmits<{ open: [id: string]; clear: [] }>()
+
+// Below this width the rail stacks under the page (see .shell in main.css),
+// so a freshly opened rail would be off screen. Scroll to it instead.
+const STACKED_LAYOUT_QUERY = '(max-width: 1100px)'
+
+const rail = ref<HTMLElement | null>(null)
+const reveal = useHistoryRailRevealRequest()
+const queueMinimized = useQueueVisualizerState()
+
+onMounted(() => {
+  if (!reveal.value) return
+  reveal.value = false
+  if (!window.matchMedia(STACKED_LAYOUT_QUERY).matches) return
+  // On phones the queue panel would sit on top of the list we scroll to.
+  if (isCompactScreen()) queueMinimized.value = true
+
+  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  void nextTick(() => {
+    rail.value?.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'start' })
+  })
+})
 </script>

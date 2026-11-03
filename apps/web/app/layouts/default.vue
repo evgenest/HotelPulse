@@ -6,7 +6,7 @@
         :queue-state="queueState"
         :history-open="historyOpen"
         @go-home="navigateTo('/')"
-        @toggle-history="historyOpen = !historyOpen"
+        @toggle-history="toggleHistory"
       />
       <slot />
     </div>
@@ -32,6 +32,7 @@ const { queueState } = useQueueStore()
 const { bookingHistory, clearHistory, refreshHistory, startHistorySync } = useBookingStore()
 
 const historyOpen = useHistoryRailState()
+const toggleHistory = useToggleHistoryRail()
 let stopHistorySync: (() => void) | null = null
 
 const currentBookingId = computed(() =>

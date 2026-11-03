@@ -5,7 +5,7 @@
         :queue-state="queueState"
         :history-open="historyOpen"
         @go-home="() => {}"
-        @toggle-history="historyOpen = !historyOpen"
+        @toggle-history="toggleHistory"
       />
 
       <main class="page">
@@ -93,6 +93,7 @@ const { queueState } = useQueueStore()
 const { bookingHistory, clearHistory, refreshHistory, startHistorySync } = useBookingStore()
 
 const historyOpen = useHistoryRailState()
+const toggleHistory = useToggleHistoryRail()
 const hotelsRef = ref<HTMLElement | null>(null)
 let stopHistorySync: (() => void) | null = null
 
