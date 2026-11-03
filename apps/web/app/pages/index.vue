@@ -12,7 +12,7 @@
         <!-- Hero: split layout -->
         <div class="hero hero-split">
           <div>
-            <div class="eyebrow" style="margin-bottom: 16px">HotelPulse · v0.1.0</div>
+            <div class="eyebrow" style="margin-bottom: 16px">HotelPulse · v{{ config.public.appVersion }}</div>
             <h1 class="h-display">Bookings that just work, even when things don't.</h1>
             <p class="lede">
               Async-confirmed reservations with a durable queue between request and worker.
@@ -20,7 +20,12 @@
             </p>
             <div class="row gap-2">
               <button class="btn btn-primary btn-lg" @click="scrollToHotels">Browse hotels</button>
-              <a class="btn btn-lg" href="https://github.com" target="_blank">View architecture</a>
+              <a
+                class="btn btn-lg"
+                :href="`${config.public.repoUrl}#architecture`"
+                target="_blank"
+                rel="noopener"
+              >View architecture</a>
             </div>
           </div>
           <ArchDiagram />

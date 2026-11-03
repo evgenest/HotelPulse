@@ -47,6 +47,13 @@
               </svg>
             </div>
 
+            <div v-else-if="booking.status === 'cancelled'" class="status-cancelled">
+              <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="var(--muted)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="8" />
+                <path d="M6.5 17.5l11-11" />
+              </svg>
+            </div>
+
             <div v-else-if="booking.status === 'rejected'" class="status-x">
               <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="var(--bad)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M7 7l10 10M17 7l-10 10" />
@@ -57,6 +64,7 @@
             <h1 class="status-headline">
               <span v-if="booking.status === 'pending'">Processing your booking…</span>
               <span v-else-if="booking.status === 'confirmed'">Booking confirmed.</span>
+              <span v-else-if="booking.status === 'cancelled'">Booking cancelled.</span>
               <span v-else>We couldn't confirm this booking.</span>
             </h1>
             <div class="status-sub">
@@ -64,8 +72,20 @@
               <span v-else-if="booking.status === 'confirmed'">
                 Confirmation #{{ booking.confirmationCode }} · details noted for {{ firstName }}.
               </span>
+              <span v-else-if="booking.status === 'cancelled'">
+                The room is free again for these dates.
+                <template v-if="booking.confirmationCode"> Reference #{{ booking.confirmationCode }}.</template>
+              </span>
               <span v-else>{{ booking.rejectionReason ?? 'The room was just taken. Try another date or room.' }}</span>
             </div>
+
+            <!-- Cancel action: spec docs/specs/booking-cancellation.md -->
+            <div v-if="canCancel" class="row gap-2" style="justify-content:center;margin-top:18px">
+              <button class="btn" :disabled="cancelling" @click="cancel">
+                {{ cancelling ? 'Cancelling…' : 'Cancel booking' }}
+              </button>
+            </div>
+            <div v-if="cancelError" class="status-error">{{ cancelError }}</div>
 
             <!-- Retry actions for rejected -->
             <div v-if="booking.status === 'rejected'" class="row gap-2" style="justify-content:center;margin-top:18px">
@@ -120,6 +140,17 @@ const historyOpen = useHistoryRailState()
 const booking = ref<Booking | null>(null)
 const loading = ref(true)
 let stopHistorySync: (() => void) | null = null
+
+const cancelling = ref(false)
+const cancelError = ref<string | null>(null)
+
+// Mirrors the server rule: pending or confirmed, and check-in after today (UTC).
+const canCancel = computed(() => {
+  const b = booking.value
+  if (!b || (b.status !== 'pending' && b.status !== 'confirmed')) return false
+  const todayUtc = new Date().toISOString().slice(0, 10)
+  return b.checkIn > todayUtc
+})
 
 const firstName = computed(() => booking.value?.guestName.split(' ')[0] ?? '')
 
@@ -223,6 +254,29 @@ onUnmounted(() => {
   window.removeEventListener('focus', handlePageResume)
   document.removeEventListener('visibilitychange', handlePageResume)
 })
+
+async function cancel() {
+  if (!booking.value || cancelling.value) return
+  if (!window.confirm('Cancel this booking? The room will be released for these dates.')) return
+
+  cancelling.value = true
+  cancelError.value = null
+  try {
+    const result = await $fetch<Booking>(
+      `${config.public.apiBase}/api/bookings/${booking.value.id}/cancel`,
+      { method: 'POST' }
+    )
+    booking.value = result
+    updateStatus(result.id, result.status)
+    syncPolling(result.status)
+  } catch (err: unknown) {
+    const data = (err as { data?: { error?: string } })?.data
+    cancelError.value = data?.error ?? 'Could not cancel the booking. Try again.'
+    void fetchBooking()
+  } finally {
+    cancelling.value = false
+  }
+}
 
 async function retry() {
   if (!booking.value) return

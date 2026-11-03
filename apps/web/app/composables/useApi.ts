@@ -36,10 +36,11 @@ export interface Booking {
   checkOut: string
   nights: number
   total: number
-  status: 'pending' | 'confirmed' | 'rejected'
+  status: 'pending' | 'confirmed' | 'rejected' | 'cancelled'
   confirmationCode?: string | null
   rejectionReason?: string | null
   createdAt: string
+  cancelledAt?: string | null
   events: BookingEvent[]
 }
 
@@ -66,5 +67,7 @@ export function useApi() {
         body: payload,
       }),
     getBooking: (id: string) => $fetch<Booking>(`${base}/api/bookings/${id}`),
+    cancelBooking: (id: string) =>
+      $fetch<Booking>(`${base}/api/bookings/${id}/cancel`, { method: 'POST' }),
   }
 }
