@@ -27,7 +27,7 @@
 | 7 | Outbox relay (confirms + mandatory) и consumer (prefetch 1, DeliveryPolicy, SIGTERM) на php-amqplib | ✅ |
 | 8 | Интеграционные тесты (включая параллельные) + CI | ✅ 147 тестов; job `laravel` в CI (PHP 8.5, Pint, composer audit, Pest, параллельные ×3) |
 | 9 | Переключатель «.NET / Laravel» в шапке; своя история бронирований на каждый бэкенд; без `NUXT_PUBLIC_API_BASE_LARAVEL` переключатель скрыт | ✅ (typecheck; в браузере проверю после деплоя) |
-| 10 | Деплой (Render, Docker + supervisord) и документация | ⏭ следующий шаг |
+| 10 | Деплой (Render, Docker + supervisord) и документация | 🔧 в работе: Octane + FrankenPHP запускается и отвечает; дальше Dockerfile, supervisord, compose, render.yaml, документация |
 
 ## Как продолжить в новой сессии
 
@@ -44,6 +44,8 @@
 - CI на GitHub таких ограничений не имеет.
 
 ## Журнал
+
+- 2026-11-03 — Octane + FrankenPHP. Найдено: без `APP_KEY` воркер Octane падает при старте, а Octane не показывает причину (под FrankenPHP нет константы `STDERR`, и его обработчик ошибок сам падает). Видно только «worker has not reached frankenphp_handle_request()». Решение: стартовый скрипт контейнера проверяет `APP_KEY` и пишет понятную ошибку.
 
 - 2026-11-03 — переключатель бэкенда на фронте. Решение: ID бронирований существуют только в своём бэкенде, поэтому история хранится отдельно (`hp.bookings` для .NET — старый ключ, чтобы не потерять историю; `hp.bookings.laravel`), а со страницы бронирования после переключения — возврат к списку отелей.
 
