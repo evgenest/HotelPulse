@@ -6,7 +6,7 @@
 #
 # hotelpulse-api-laravel is the Laravel implementation of the same API. It
 # runs web, outbox relay and worker in one container under supervisord, and
-# uses its own Neon branch, its own RabbitMQ exchange and queue, and its own
+# uses its own Neon database, its own RabbitMQ exchange and queue, and its own
 # Redis key prefix (docs/specs/laravel-port.md → isolation).
 #
 # Free web services sleep after 15 idle minutes; the worker inside sleeps
