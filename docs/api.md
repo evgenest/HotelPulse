@@ -104,9 +104,23 @@ Poll this until `status` is `confirmed` or `rejected`.
 
 A rejection sets `rejectionReason` and leaves `confirmationCode` null. About one booking in ten is rejected unless `HOTELPULSE_CONFIRM_PROBABILITY=1`.
 
+### `POST /api/bookings/{id}/cancel`
+
+Cancels a `pending` or `confirmed` booking before its check-in date. No body. The full rules are in [`specs/booking-cancellation.md`](specs/booking-cancellation.md).
+
+| Case | Response |
+|---|---|
+| Cancelled now | `200` with the booking: `status: "cancelled"`, `cancelledAt`, and the event `api → booking cancelled` |
+| Already cancelled | `200` with the booking, unchanged |
+| Unknown id | `404` |
+| Booking is `rejected` | `409` |
+| Check-in is today or earlier (UTC) | `409` |
+
+A cancelled booking no longer holds the room, and the hotel's cached reads are invalidated.
+
 ### `GET /health`
 
-`200` when Postgres answers `SELECT 1`. `503` otherwise. Redis is not required for readiness.
+`200` when Postgres answers `SELECT 1`. `503` otherwise. Redis is not required for readiness. The body is `{ status, version, time }`.
 
 ## Queue
 

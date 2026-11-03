@@ -23,6 +23,7 @@ public sealed class BookingRepository(NpgsqlDataSource dataSource) : IBookingSto
                confirmation_code,
                rejection_reason,
                created_at,
+               cancelled_at,
                events::text AS events
         FROM bookings
         """;
@@ -40,7 +41,7 @@ public sealed class BookingRepository(NpgsqlDataSource dataSource) : IBookingSto
     {
         await using var connection = await dataSource.OpenConnectionAsync(ct);
         await connection.ExecuteAsync(
-            "UPDATE bookings SET events = @events::jsonb WHERE id = @id",
+            "UPDATE bookings SET events = @events::jsonb WHERE id = @id AND status = 'pending'",
             new { id, events = Serialize(events) });
     }
 
@@ -171,6 +172,43 @@ public sealed class BookingRepository(NpgsqlDataSource dataSource) : IBookingSto
         }
     }
 
+    public async Task<Booking?> TryCancelAsync(
+        string id,
+        DateOnly today,
+        IReadOnlyList<BookingEvent> events,
+        CancellationToken ct)
+    {
+        await using var connection = await dataSource.OpenConnectionAsync(ct);
+        var row = await connection.QuerySingleOrDefaultAsync<BookingRow>(
+            """
+            UPDATE bookings
+            SET status = 'cancelled',
+                cancelled_at = now(),
+                events = @events::jsonb
+            WHERE id = @id
+              AND status IN ('pending', 'confirmed')
+              AND check_in > @today
+            RETURNING id,
+                      hotel_id,
+                      hotel_name,
+                      room_id,
+                      room_type,
+                      guest_name,
+                      check_in,
+                      check_out,
+                      nights,
+                      total,
+                      status,
+                      confirmation_code,
+                      rejection_reason,
+                      created_at,
+                      cancelled_at,
+                      events::text AS events
+            """,
+            new { id, today, events = Serialize(events) });
+        return row is null ? null : Map(row);
+    }
+
     public async Task<IReadOnlyList<Booking>> ListRecentAsync(int limit, CancellationToken ct)
     {
         await using var connection = await dataSource.OpenConnectionAsync(ct);
@@ -249,7 +287,8 @@ public sealed class BookingRepository(NpgsqlDataSource dataSource) : IBookingSto
             row.ConfirmationCode,
             row.RejectionReason,
             createdAt,
-            events);
+            events,
+            row.CancelledAt is { } cancelledAt ? DateTime.SpecifyKind(cancelledAt, DateTimeKind.Utc) : null);
     }
 
     private sealed class IdempotencyRow
@@ -274,6 +313,7 @@ public sealed class BookingRepository(NpgsqlDataSource dataSource) : IBookingSto
         public string? ConfirmationCode { get; set; }
         public string? RejectionReason { get; set; }
         public DateTime CreatedAt { get; set; }
+        public DateTime? CancelledAt { get; set; }
         public string Events { get; set; } = "[]";
     }
 }

@@ -19,6 +19,13 @@ public interface IBookingCommands
     Task<IReadOnlyList<Booking>> ListRecentAsync(int limit, CancellationToken ct);
 
     Task<IReadOnlyList<Booking>> GetManyAsync(IReadOnlyList<string> ids, CancellationToken ct);
+
+    /// <summary>
+    /// Sets the booking to cancelled if it is still pending or confirmed and
+    /// check-in is after <paramref name="today"/>. Returns the updated booking,
+    /// or null when the row no longer matches those conditions.
+    /// </summary>
+    Task<Booking?> TryCancelAsync(string id, DateOnly today, IReadOnlyList<BookingEvent> events, CancellationToken ct);
 }
 
 public sealed record CreateBookingResult(Booking Booking, bool Replay);
