@@ -15,6 +15,11 @@ RUN install-php-extensions pdo_pgsql redis pcntl sockets intl bcmath opcache zip
     && apt-get install -y --no-install-recommends supervisor \
     && rm -rf /var/lib/apt/lists/*
 COPY docker/php.ini /usr/local/etc/php/conf.d/zz-hotelpulse.ini
+# The base image gives frankenphp the cap_net_bind_service file capability so a
+# non-root user can bind ports 80/443. Hosts that drop capabilities (Render)
+# then refuse to run the binary at all ("Operation not permitted"). We listen
+# on $PORT (8080 by default), which needs no capability, so remove it.
+RUN setcap -r /usr/local/bin/frankenphp
 
 FROM base AS vendor
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
