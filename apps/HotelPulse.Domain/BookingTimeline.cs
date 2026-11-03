@@ -6,6 +6,7 @@ public static class BookingLabels
     public const string Published = "api → published to bookings.created";
     public const string Delivered = "worker → message delivered";
     public const string Locked = "worker → reservation locked in postgres";
+    public const string Cancelled = "api → booking cancelled";
 
     public static string Status(string outcome) => $"worker → status: {outcome}";
 }
@@ -45,6 +46,12 @@ public static class BookingTimeline
         new(BookingLabels.Delivered, true, Format(startedAt.AddMilliseconds(750)), false),
         new(BookingLabels.Locked, true, Format(startedAt.AddMilliseconds(1550)), false),
         new(BookingLabels.Status(outcome), true, Format(completedAt), false),
+    ];
+
+    public static IReadOnlyList<BookingEvent> Cancelled(IReadOnlyList<BookingEvent> events, DateTime utcNow) =>
+    [
+        .. events.Select(e => e with { Current = false }),
+        new(BookingLabels.Cancelled, true, Format(utcNow), false),
     ];
 
     public static string Format(DateTime utc) => utc.ToString("HH:mm:ss");

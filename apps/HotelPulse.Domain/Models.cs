@@ -35,7 +35,8 @@ public sealed record Booking(
     string? ConfirmationCode,
     string? RejectionReason,
     DateTime CreatedAt,
-    IReadOnlyList<BookingEvent> Events);
+    IReadOnlyList<BookingEvent> Events,
+    DateTime? CancelledAt = null);
 
 public sealed record CreateBookingCommand(
     string HotelId,

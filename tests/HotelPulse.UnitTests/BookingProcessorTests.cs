@@ -52,6 +52,20 @@ public class BookingProcessorTests
     }
 
     [Fact]
+    public async Task A_booking_cancelled_before_delivery_is_left_alone()
+    {
+        var store = Store(BookingStatuses.Cancelled);
+        var processor = Processor(store, BookingStatuses.Confirmed);
+
+        var result = await processor.ProcessAsync(Message(), CancellationToken.None);
+
+        Assert.IsType<ProcessingResult.Skipped>(result);
+        Assert.Equal(0, store.EventWrites);
+        Assert.Equal(0, store.Completes);
+        Assert.Equal(BookingStatuses.Cancelled, store.Items["bkg_test"].Status);
+    }
+
+    [Fact]
     public async Task A_lost_compare_and_set_is_treated_as_already_handled()
     {
         var store = Store();

@@ -1,3 +1,5 @@
+import pkg from './package.json'
+
 export default defineNuxtConfig({
   compatibilityDate: '2026-05-01',
   devtools: { enabled: true },
@@ -8,6 +10,8 @@ export default defineNuxtConfig({
   runtimeConfig: {
     public: {
       apiBase: 'http://localhost:8080',
+      appVersion: pkg.version,
+      repoUrl: 'https://github.com/evgenest/HotelPulse',
     },
   },
 

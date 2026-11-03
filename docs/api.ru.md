@@ -104,9 +104,23 @@ SQL и план — в [`sql.md`](sql.md).
 
 Отказ ставит `rejectionReason` и оставляет `confirmationCode` пустым. Примерно одна бронь из десяти отклоняется, если не задано `HOTELPULSE_CONFIRM_PROBABILITY=1`.
 
+### `POST /api/bookings/{id}/cancel`
+
+Отменяет бронь в статусе `pending` или `confirmed` до даты заезда. Тело запроса не нужно. Полные правила — в [`specs/booking-cancellation.md`](specs/booking-cancellation.md).
+
+| Случай | Ответ |
+|---|---|
+| Бронь отменена | `200` с бронью: `status: "cancelled"`, `cancelledAt` и событие `api → booking cancelled` |
+| Уже отменена | `200` с бронью без изменений |
+| Неизвестный id | `404` |
+| Бронь в статусе `rejected` | `409` |
+| Заезд сегодня или раньше (UTC) | `409` |
+
+Отменённая бронь больше не держит номер, кеш чтений по отелю сбрасывается.
+
 ### `GET /health`
 
-`200`, когда Postgres отвечает на `SELECT 1`. Иначе `503`. Redis для readiness не нужен.
+`200`, когда Postgres отвечает на `SELECT 1`. Иначе `503`. Redis для readiness не нужен. Тело ответа: `{ status, version, time }`.
 
 ## Очередь
 

@@ -6,6 +6,9 @@ using Npgsql;
 
 public static class HotelPulseEndpoints
 {
+    private static readonly string Version =
+        typeof(HotelPulseEndpoints).Assembly.GetName().Version?.ToString(3) ?? "unknown";
+
     public static void Map(WebApplication app)
     {
         app.MapGet("/health", Health);
@@ -15,6 +18,7 @@ public static class HotelPulseEndpoints
         app.MapPost("/api/bookings", CreateBooking);
         app.MapGet("/api/bookings", ListBookings);
         app.MapGet("/api/bookings/{id}", GetBooking);
+        app.MapPost("/api/bookings/{id}/cancel", CancelBooking);
     }
 
     private static async Task<IResult> Health(NpgsqlDataSource db, CancellationToken ct)
@@ -24,12 +28,12 @@ public static class HotelPulseEndpoints
             await using var connection = await db.OpenConnectionAsync(ct);
             await using var command = new NpgsqlCommand("SELECT 1", connection);
             await command.ExecuteScalarAsync(ct);
-            return Results.Ok(new { status = "ok", time = DateTime.UtcNow });
+            return Results.Ok(new { status = "ok", version = Version, time = DateTime.UtcNow });
         }
         catch
         {
             return Results.Json(
-                new { status = "unavailable", time = DateTime.UtcNow },
+                new { status = "unavailable", version = Version, time = DateTime.UtcNow },
                 statusCode: StatusCodes.Status503ServiceUnavailable);
         }
     }
@@ -175,6 +179,51 @@ public static class HotelPulseEndpoints
         return booking is null
             ? Results.NotFound(new { error = "Booking not found." })
             : Results.Ok(booking);
+    }
+
+    private static async Task<IResult> CancelBooking(
+        string id,
+        IBookingStore store,
+        IBookingCommands bookings,
+        RedisHotelCache cache,
+        CancellationToken ct)
+    {
+        // Read, decide, then write with the same rules in the WHERE clause.
+        // If another request changed the row in between, decide again on the
+        // fresh row. Two rounds are enough: after a failed write the row is
+        // terminal or past check-in, and neither of those can change again.
+        for (var attempt = 0; attempt < 2; attempt++)
+        {
+            var booking = await store.FindAsync(id, ct);
+            if (booking is null)
+                return Results.NotFound(new { error = "Booking not found." });
+
+            var now = DateTime.UtcNow;
+            var today = DateOnly.FromDateTime(now);
+            var decision = BookingCancellation.Decide(booking.Status, booking.CheckIn, today);
+
+            switch (decision)
+            {
+                case CancellationDecision.AlreadyCancelled:
+                    return Results.Ok(booking);
+                case CancellationDecision.NotCancellable:
+                case CancellationDecision.TooLate:
+                    return Results.Conflict(new { error = BookingCancellation.Error(decision) });
+            }
+
+            var cancelled = await bookings.TryCancelAsync(
+                id,
+                today,
+                BookingTimeline.Cancelled(booking.Events, now),
+                ct);
+            if (cancelled is null)
+                continue;
+
+            await cache.InvalidateHotelAsync(cancelled.HotelId);
+            return Results.Ok(cancelled);
+        }
+
+        return Results.Conflict(new { error = "The booking changed while it was being cancelled. Try again." });
     }
 
     private static IResult Cached<T>(HttpContext http, string cacheStatus, T body)

@@ -11,6 +11,8 @@ public class BookingStatusTests
     [InlineData("confirmed", "rejected", false)]
     [InlineData("rejected", "confirmed", false)]
     [InlineData("rejected", "pending", false)]
+    [InlineData("pending", "cancelled", false)]
+    [InlineData("cancelled", "confirmed", false)]
     public void Only_pending_moves_to_a_terminal_status(string from, string to, bool legal)
     {
         Assert.Equal(legal, BookingStatuses.IsLegalTransition(from, to));
@@ -20,7 +22,8 @@ public class BookingStatusTests
     [InlineData("pending", false)]
     [InlineData("confirmed", true)]
     [InlineData("rejected", true)]
-    public void Terminal_statuses_are_confirmed_and_rejected(string status, bool terminal)
+    [InlineData("cancelled", true)]
+    public void Terminal_statuses_are_confirmed_rejected_and_cancelled(string status, bool terminal)
     {
         Assert.Equal(terminal, BookingStatuses.IsTerminal(status));
     }
@@ -29,6 +32,7 @@ public class BookingStatusTests
     [InlineData("pending", true)]
     [InlineData("confirmed", true)]
     [InlineData("rejected", false)]
+    [InlineData("cancelled", false)]
     public void Rejected_stays_do_not_hold_the_room(string status, bool holds)
     {
         Assert.Equal(holds, BookingStatuses.HoldsInventory(status));
