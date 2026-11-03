@@ -13,10 +13,13 @@ import { Counter } from 'k6/metrics';
 const BASE = __ENV.BASE_URL || 'http://localhost:8080';
 const VUS = Number(__ENV.VUS || 50);
 const DURATION = __ENV.DURATION || '60s';
-// Bookings go 400+ days ahead into a 14-day window, so a run never collides
-// with real demo data and still conflicts with itself.
+// Bookings go FIRST_DAY+ days ahead (away from real demo data) into a
+// WINDOW_DAYS window over every room. A year over all rooms gives both real
+// inserts and conflicts; WINDOW_DAYS=14 ROOMS=2 makes almost every booking a
+// conflict ("hot inventory").
 const FIRST_DAY = Number(__ENV.FIRST_DAY || 400);
-const WINDOW_DAYS = 14;
+const WINDOW_DAYS = Number(__ENV.WINDOW_DAYS || 365);
+const ROOMS = __ENV.ROOMS ? Number(__ENV.ROOMS) : Infinity;
 
 const serverErrors = new Counter('server_errors');
 const unexpectedStatus = new Counter('unexpected_status');
@@ -32,6 +35,7 @@ export const options = {
     'http_req_duration{kind:read}': ['p(95)<200'],
     'http_req_duration{kind:book}': ['p(95)<500'],
   },
+  // Thresholds per kind need these sub-metrics to exist in the summary.
   summaryTrendStats: ['avg', 'med', 'p(90)', 'p(95)', 'p(99)', 'max'],
 };
 
@@ -78,8 +82,7 @@ export default function (data) {
     return;
   }
 
-  // Two rooms per hotel and a 14-day window: plenty of overlaps.
-  const room = pick(hotel.rooms.slice(0, 2));
+  const room = pick(hotel.rooms.slice(0, ROOMS));
   const start = FIRST_DAY + Math.floor(Math.random() * WINDOW_DAYS);
   const nights = 1 + Math.floor(Math.random() * 3);
   const body = {

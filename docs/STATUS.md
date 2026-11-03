@@ -36,16 +36,18 @@
 3. .NET-тесты в облачной сессии: установить SDK (`dotnet-install.sh --jsonfile global.json`), запустить `dockerd`, затем `npm run test:unit` и `npm run test:integration`.
 4. Порт закончен. Что осталось (не блокирует):
    - **деплой на Render** — синхронизировать Blueprint, завести ветку Neon `laravel`, проверить переключатель в браузере;
-   - **нагрузочный smoke-тест k6** — 🔧 в работе: сценарий `scripts/load/booking-load.js`, проверки базы `after-run.sql`, запуск `run.sh` написаны; осталось прогнать против .NET и Laravel и записать `docs/benchmarks.md`. Запуск тестов PHP: `docker run --rm -v $PWD/apps/api-laravel:/app -w /app <образ PHP 8.5 с pdo_pgsql, redis, pcntl, sockets, bcmath> ./vendor/bin/pest`.
+ Запуск тестов PHP: `docker run --rm -v $PWD/apps/api-laravel:/app -w /app <образ PHP 8.5 с pdo_pgsql, redis, pcntl, sockets, bcmath> ./vendor/bin/pest`.
 
 ### Известные ограничения облачной сессии (не проекта)
 
 - Прокси сессии не отдаёт архивы GitHub (`api.github.com/.../zipball` → 403), но пропускает `git clone`. Поэтому composer здесь работает только с `--prefer-source` (медленно, 8 ГБ вместе с историями git; после установки `find vendor -name .git -prune -exec rm -rf {} +`).
-- Из-за этого **Larastan не установлен**: `phpstan/phpstan` распространяется только архивом. **TODO:** на локальной машине или в CI выполнить `composer require --dev larastan/larastan` и закоммитить `composer.lock`.
+- Larastan в CI ставится обычно. Локально в этой песочнице `phpstan/phpstan` распространяется только архивом, поэтому три пакета (`phpstan/phpstan`, `larastan/larastan`, `iamcal/sql-parser`) кладутся в `vendor/` через `git clone` по версиям из `composer.lock` и дописываются в `vendor/composer/installed.json`; запуск — `php vendor/phpstan/phpstan/phpstan analyse`.
 - PHP 8.5 запускается в Docker-образе. Локальная сборка образа требует CA прокси, Dockerfile для этого лежит в scratchpad сессии, а не в репозитории.
 - CI на GitHub таких ограничений не имеет.
 
 ## Журнал
+
+- 2026-11-03 — нагрузочный тест k6 против обеих реализаций, по два режима (обычный и «горячие» комнаты). Все пороги пройдены: 0 ответов 5xx, 0 пересечений, 0 зависших `pending`. В «горячем» режиме обе создали ровно по 124 бронирования — физический предел набора комнат и дат. Цифры и оговорки — в `docs/benchmarks.md`. Версия 1.1.1.
 
 - 2026-11-03 — Larastan 3.14 (PHPStan 2.3, уровень 8) в CI, без baseline и подавлений. Первый прогон дал 60 замечаний; исправлены все. Настоящие находки: `config/auth.php` ссылался на удалённую модель `User` (файл удалён — аутентификации нет); строки из базы читались без проверки типов (новый `Row` проверяет каждый столбец и падает сразу при расхождении схемы); мёртвые проверки `=== false` в кэше; аннотации `@param … @return …` в одну строку молча не работали. Флаги, которые меняют обработчики сигналов и callback'и брокера, читаются через `@phpstan-impure`-методы с настоящим побочным эффектом. Локально пакеты поставлены через `git clone` (архивы GitHub в песочнице недоступны). Pest 147/147.
 

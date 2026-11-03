@@ -123,7 +123,10 @@ Laravel (PHP 8.5 with `pdo_pgsql`, `redis`, `pcntl`, `sockets`, `bcmath`; set `D
 cd apps/api-laravel && composer install
 ./vendor/bin/pest          # unit + feature, including parallel requests
 ./vendor/bin/pint --test   # code style
+./vendor/bin/phpstan analyse   # Larastan, level 8
 ```
+
+Load test (k6 in Docker, both APIs, thresholds from the spec): see [`docs/benchmarks.md`](docs/benchmarks.md).
 
 Integration tests use Testcontainers when Docker is available and `POSTGRES_URI` is unset. Set `POSTGRES_URI`, `REDIS_URI`, and `RABBITMQ_URI` to point them at services you already started. CI does that with service containers, then builds the three images. See [`.github/workflows/ci.yml`](.github/workflows/ci.yml).
 

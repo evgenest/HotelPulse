@@ -13,8 +13,9 @@ HERE=$(cd "$(dirname "$0")" && pwd)
 OUT="$HERE/results"
 mkdir -p "$OUT"
 
-docker run --rm --network host -v "$HERE:/load" -e BASE_URL="$BASE_URL" \
+docker run --rm --network host --user "$(id -u):$(id -g)" -v "$HERE:/load" -e BASE_URL="$BASE_URL" \
   -e SUMMARY_JSON="/load/results/$NAME.json" ${VUS:+-e VUS=$VUS} ${DURATION:+-e DURATION=$DURATION} \
+  ${WINDOW_DAYS:+-e WINDOW_DAYS=$WINDOW_DAYS} ${ROOMS:+-e ROOMS=$ROOMS} ${FIRST_DAY:+-e FIRST_DAY=$FIRST_DAY} \
   grafana/k6:2.3.0 run --quiet /load/booking-load.js || K6_FAILED=1
 
 echo "waiting for the worker to drain pending bookings..."

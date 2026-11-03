@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.1.1 — 2026-11-03
+
+- Laravel: Larastan (PHPStan level 8) in CI, no baseline. Fixes from its
+  first run: database rows are read through a typed `Row` helper that fails
+  at the column when the schema drifts; the unused `config/auth.php` that
+  pointed at a removed `User` model is gone; dead `=== false` cache checks
+  removed; money types tightened.
+- k6 load test in `scripts/load/` with the spec's thresholds and a database
+  check afterwards (no overlapping active stays, nothing left pending).
+  Results for both APIs in `docs/benchmarks.md`: all thresholds pass.
+
 ## 1.1.0 — 2026-11-03
 
 - Laravel implementation of the API, outbox relay and worker in
