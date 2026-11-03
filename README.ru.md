@@ -6,7 +6,11 @@ HotelPulse — небольшой сервис бронирования отел
 
 Это учебный проект. Цель — не просто работающий код и демо, а понять, как целиком устроена боевая система, от базы данных до браузера: какие решения влияют на надёжность, производительность и бизнес-правила и почему выбраны именно они. Эти решения и проблемы, из-за которых они появились, записаны в [`docs/adr/`](docs/adr/README.md), там же словарик терминов. Начать лучше с [`docs/why-not-mvp.md`](docs/why-not-mvp.md): все решения на одной странице и что сломалось бы без каждого из них.
 
-Живое демо: _добавьте публичный URL после деплоя на VPS._
+Живое демо (бесплатный Render, Франкфурт; после простоя первый запрос может идти до минуты):
+
+- Веб: https://hotelpulse-web.onrender.com — в шапке переключатель **.NET / Laravel**
+- .NET API: https://hotelpulse-api.onrender.com ([`/health`](https://hotelpulse-api.onrender.com/health))
+- Laravel API: https://hotelpulse-api-laravel.onrender.com ([`/health`](https://hotelpulse-api-laravel.onrender.com/health))
 
 ## Архитектура
 

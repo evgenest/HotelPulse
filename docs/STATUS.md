@@ -35,7 +35,7 @@
 2. Прочитать этот файл, план и `docs/adr/`.
 3. .NET-тесты в облачной сессии: установить SDK (`dotnet-install.sh --jsonfile global.json`), запустить `dockerd`, затем `npm run test:unit` и `npm run test:integration`.
 4. Порт закончен. Что осталось (не блокирует):
-   - **деплой на Render** — 🔧 готовится: пошаговый список в `DEPLOY.md` → «Laravel API on Render». Нужны действия владельца в Neon (база `hotelpulse_laravel`), CloudAMQP и Render; после этого — проверка живого стенда.
+   - ✅ **деплой на Render** выполнен: веб, .NET API и Laravel API работают, версия 1.1.2. Ничего обязательного не осталось.
  Запуск тестов PHP: `docker run --rm -v $PWD/apps/api-laravel:/app -w /app <образ PHP 8.5 с pdo_pgsql, redis, pcntl, sockets, bcmath> ./vendor/bin/pest`.
 
 ### Известные ограничения облачной сессии (не проекта)
@@ -46,6 +46,8 @@
 - CI на GitHub таких ограничений не имеет.
 
 ## Журнал
+
+- 2026-11-03 — деплой на Render завершён. Проверено на живом стенде: Laravel `/health` 1.1.2, `/health/live`, `X-Cache` MISS → HIT, `X-Request-Id`, CORS для веба, бронирование 202 → `confirmed` за ~6 с, повтор на те же даты 409, отмена освобождает номер; .NET 1.1.2, бронирование → `confirmed`; веб получил оба адреса API, переключатель работает. Тестовые бронирования отменены.
 
 - 2026-11-03 — первый деплой Laravel на Render упал: `exec /usr/local/bin/frankenphp: Operation not permitted`. Причина — файловая capability `cap_net_bind_service` у бинарника FrankenPHP в базовом образе; Render сбрасывает capabilities, и ядро отказывается запускать такой бинарник. Воспроизведено с `--cap-drop ALL`, исправлено `setcap -r` (порт 8080/`$PORT` её не требует). PR #16.
 - 2026-11-03 — при подготовке деплоя найдено: замок миграций был сессионным (`pg_advisory_lock`) и в .NET, и в Laravel; через пул Neon он мог остаться висеть и повесить следующий деплой. Теперь транзакционный замок в открытой транзакции на отдельном подключении; `DATABASE_URL_UNPOOLED` стал необязательным. Тесты: .NET 28/28, Laravel 149/149. Версия 1.1.2.
