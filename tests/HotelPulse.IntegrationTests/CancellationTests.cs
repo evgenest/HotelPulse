@@ -32,7 +32,8 @@ public sealed class CancellationTests(HotelPulseStack stack) : IAsyncLifetime
         Assert.Equal("cancelled", body.GetProperty("status").GetString());
         Assert.True(body.TryGetProperty("cancelledAt", out _));
         Assert.Matches("^HP-[0-9A-F]{6}$", body.GetProperty("confirmationCode").GetString());
-        Assert.Equal("api → booking cancelled", body.GetProperty("events")[^1].GetProperty("label").GetString());
+        var events = body.GetProperty("events");
+        Assert.Equal("api → booking cancelled", events[events.GetArrayLength() - 1].GetProperty("label").GetString());
 
         var stored = await stack.GetBookingAsync(id);
         Assert.Equal("cancelled", stored.GetProperty("status").GetString());
