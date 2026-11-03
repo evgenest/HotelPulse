@@ -29,11 +29,7 @@ public static class DependencyInjection
         services.AddSingleton(settings);
         services.AddSingleton(_ => new NpgsqlDataSourceBuilder(settings.PostgresUri).Build());
         services.AddSingleton<IConnectionMultiplexer>(_ =>
-        {
-            var options = ConfigurationOptions.Parse(settings.RedisUri);
-            options.AbortOnConnectFail = false;
-            return ConnectionMultiplexer.Connect(options);
-        });
+            ConnectionMultiplexer.Connect(RedisConnection.ToOptions(settings.RedisUri)));
 
         services.AddSingleton<DatabaseMigrator>();
         services.AddHostedService<MigrateOnStartup>();
@@ -54,7 +50,9 @@ public static class DependencyInjection
         if (role == HotelPulseRole.Api)
             services.AddHostedService<OutboxRelay>();
 
-        if (role == HotelPulseRole.Worker)
+        // The separate worker process is the default. The free Render demo sets
+        // RUN_WORKER_IN_PROCESS because that plan has no background workers.
+        if (role == HotelPulseRole.Worker || (role == HotelPulseRole.Api && settings.RunWorkerInProcess))
             services.AddHostedService<BookingConsumer>();
 
         return services;

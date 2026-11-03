@@ -1,0 +1,57 @@
+# Free Render demo. Postgres is an external Neon database and RabbitMQ is
+# CloudAMQP. Both are prompted for on the first Blueprint sync (sync: false).
+# The API process also runs the booking consumer because the free plan has
+# no background workers. Migrations, including the hotel catalog, run when
+# the API process starts.
+
+services:
+  - type: web
+    name: hotelpulse-api
+    runtime: docker
+    region: frankfurt
+    plan: free
+    dockerfilePath: ./apps/api/Dockerfile
+    dockerContext: .
+    healthCheckPath: /health
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: AMQP_URL
+        sync: false
+      - key: REDIS_URL
+        fromService:
+          name: hotelpulse-cache
+          type: keyvalue
+          property: connectionString
+      - key: RUN_WORKER_IN_PROCESS
+        value: "true"
+      - key: HOTELPULSE_CONFIRM_PROBABILITY
+        value: "1"
+      - key: CORS_ORIGINS
+        fromService:
+          name: hotelpulse-web
+          type: web
+          envVarKey: RENDER_EXTERNAL_URL
+
+  - type: web
+    name: hotelpulse-web
+    runtime: docker
+    region: frankfurt
+    plan: free
+    dockerfilePath: ./apps/web/Dockerfile
+    dockerContext: ./apps/web
+    healthCheckPath: /
+    envVars:
+      - key: NUXT_PUBLIC_API_BASE
+        fromService:
+          name: hotelpulse-api
+          type: web
+          envVarKey: RENDER_EXTERNAL_URL
+
+  - type: keyvalue
+    name: hotelpulse-cache
+    region: frankfurt
+    plan: free
+    ipAllowList: []
+    maxmemoryPolicy: allkeys-lru
+    persistenceMode: "off"

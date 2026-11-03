@@ -63,7 +63,7 @@ public sealed class HotelPulseStack : IAsyncLifetime
         }
 
         PostgresUri = postgres;
-        var redisUri = RedisAddress.Normalize(redis);
+        var redisUri = redis;
         Environment.SetEnvironmentVariable("POSTGRES_URI", PostgresUri);
         Environment.SetEnvironmentVariable("REDIS_URI", redisUri);
         Environment.SetEnvironmentVariable("RABBITMQ_URI", rabbit);

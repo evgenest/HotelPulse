@@ -10,7 +10,7 @@ public sealed class DatabaseMigrator(NpgsqlDataSource dataSource, ILogger<Databa
 
     public async Task ApplyAsync(CancellationToken ct = default)
     {
-        await using var connection = await dataSource.OpenConnectionAsync(ct);
+        await using var connection = await OpenAsync(ct);
         await connection.ExecuteAsync("SELECT pg_advisory_lock(@key)", new { key = AdvisoryLockKey });
         try
         {
@@ -55,6 +55,31 @@ public sealed class DatabaseMigrator(NpgsqlDataSource dataSource, ILogger<Databa
         {
             await connection.ExecuteAsync("SELECT pg_advisory_unlock(@key)", new { key = AdvisoryLockKey });
         }
+    }
+
+    private async Task<NpgsqlConnection> OpenAsync(CancellationToken ct)
+    {
+        Exception? last = null;
+        for (var attempt = 1; attempt <= StartupConnections.RetryDelays.Length + 1; attempt++)
+        {
+            try
+            {
+                return await dataSource.OpenConnectionAsync(ct);
+            }
+            catch (Exception ex) when (StartupConnections.IsTransient(ex) && attempt <= StartupConnections.RetryDelays.Length)
+            {
+                last = ex;
+                var delay = StartupConnections.RetryDelays[attempt - 1];
+                logger.LogWarning(
+                    ex,
+                    "Postgres is not ready (attempt {Attempt}); retrying in {DelaySeconds}s",
+                    attempt,
+                    delay.TotalSeconds);
+                await Task.Delay(delay, ct);
+            }
+        }
+
+        throw last ?? new InvalidOperationException("Postgres connection failed.");
     }
 
     private static string FileName(string resourceName)

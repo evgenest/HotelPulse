@@ -110,7 +110,11 @@ The same sequence works from the site: stop the worker, book a room, watch the p
 
 ## Deploy
 
-[`DEPLOY.md`](DEPLOY.md) is the VPS path: copy `.env.example` to `.env`, point DNS at the machine, and run `docker compose -f docker-compose.prod.yml up -d --build`. Caddy requests the certificate. This repository does not contain server credentials and does not deploy anywhere by itself.
+[`DEPLOY.md`](DEPLOY.md) covers two ways to run it.
+
+A VPS uses `docker-compose.prod.yml`: copy `.env.example` to `.env`, point DNS at the machine, and run `docker compose -f docker-compose.prod.yml up -d --build`. Caddy requests the certificate. The worker is its own container.
+
+A free Render demo uses [`render.yaml`](render.yaml). The API and the Nuxt server are free web services, Redis is Render Key Value, Postgres is a Neon database, and RabbitMQ is CloudAMQP. Render's free plan has no background workers, so that Blueprint sets `RUN_WORKER_IN_PROCESS=true` and the API process consumes the queue itself. That flag stays off for Compose, Kubernetes, and `apps/worker`. The API reads `DATABASE_URL`, `REDIS_URL`, `AMQP_URL`, and `PORT` when those are set, and still accepts `POSTGRES_URI`, `REDIS_URI`, and `RABBITMQ_URI` for the local stack. Nothing in this repository is deployed on its own.
 
 ## Repository
 
@@ -125,6 +129,7 @@ k8s/                              namespace, Postgres, Redis, RabbitMQ, API, wor
 deploy/Caddyfile                  production proxy
 docker-compose.yml                local stack
 docker-compose.prod.yml           single-host production stack
+render.yaml                       Render free-tier blueprint (Neon + CloudAMQP)
 ```
 
 Accounts and card payments are outside this service. Booking history in the browser is a local cache of the API list; the rows themselves are in Postgres.

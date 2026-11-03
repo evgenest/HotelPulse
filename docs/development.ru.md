@@ -32,6 +32,8 @@ npm run typecheck
 
 `HOTELPULSE_STEP_DELAY_MS=0` и `HOTELPULSE_CONFIRM_PROBABILITY=1` делают конвейер мгновенным и детерминированным. Без них шаги длятся 700, 800 и 900 мс, а подтверждение выпадает в 90% случаев.
 
+`DATABASE_URL`, `REDIS_URL` и `AMQP_URL` перекрывают `POSTGRES_URI`, `REDIS_URI` и `RABBITMQ_URI`. `RUN_WORKER_IN_PROCESS=true` запускает потребителя внутри процесса API; без флага очередь читает `apps/worker`. `PORT` — HTTP-порт, если его задаёт хост вроде Render.
+
 ## Процессы без Compose
 
 Нужны Postgres, Redis и RabbitMQ на значениях по умолчанию из `HotelPulseSettings` (localhost, база `hotelpulse` / `hotelpulse`, RabbitMQ `guest` на localhost). Дальше:

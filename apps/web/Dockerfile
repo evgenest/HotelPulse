@@ -11,5 +11,6 @@ FROM node:24-alpine AS runtime
 WORKDIR /app
 COPY --from=build /app/.output .
 EXPOSE 3000
+ENV HOST=0.0.0.0
 ENV PORT=3000
 CMD ["node", "server/index.mjs"]

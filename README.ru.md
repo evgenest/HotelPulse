@@ -110,7 +110,7 @@ docker compose start worker
 
 ## Деплой
 
-[`DEPLOY.md`](DEPLOY.md) — путь для VPS: скопируйте `.env.example` в `.env`, направьте DNS на машину и выполните `docker compose -f docker-compose.prod.yml up -d --build`. Caddy запросит сертификат. В репозитории нет серверных секретов, и сам он никуда не деплоится.
+[`DEPLOY.md`](DEPLOY.md) описывает два пути. VPS — `docker-compose.prod.yml`, воркер в своём контейнере. Бесплатное демо на Render — [`render.yaml`](render.yaml): API и Nuxt как web-сервисы, Redis как Key Value, Postgres на Neon, RabbitMQ на CloudAMQP. На бесплатном плане Render нет background worker, поэтому Blueprint ставит `RUN_WORKER_IN_PROCESS=true` и очередь читает сам процесс API. В Compose, Kubernetes и `apps/worker` этот флаг выключен. API понимает `DATABASE_URL`, `REDIS_URL`, `AMQP_URL` и `PORT`, а локальный стек по-прежнему задаёт `POSTGRES_URI`, `REDIS_URI` и `RABBITMQ_URI`. Репозиторий сам никуда не деплоится.
 
 ## Репозиторий
 

@@ -9,15 +9,25 @@ public sealed record HotelPulseSettings(
     string RedisUri,
     string RabbitMqUri,
     int[] StepDelayMs,
-    double ConfirmProbability)
+    double ConfirmProbability,
+    bool RunWorkerInProcess)
 {
     public static HotelPulseSettings From(IConfiguration configuration)
     {
-        var postgres = configuration["POSTGRES_URI"]
+        var postgresRaw = First(configuration["DATABASE_URL"], configuration["POSTGRES_URI"])
             ?? "Host=localhost;Port=5432;Database=hotelpulse;Username=hotelpulse;Password=hotelpulse";
-        var redis = RedisAddress.Normalize(configuration["REDIS_URI"] ?? "localhost:6379");
-        var rabbit = configuration["RABBITMQ_URI"] ?? "amqp://guest:guest@localhost:5672/";
+        var redis = First(configuration["REDIS_URL"], configuration["REDIS_URI"]) ?? "localhost:6379";
+        var rabbit = First(configuration["AMQP_URL"], configuration["RABBITMQ_URI"])
+            ?? "amqp://guest:guest@localhost:5672/";
         var delays = StepDelays.Resolve(configuration["HOTELPULSE_STEP_DELAY_MS"]);
+        var maxPool = PostgresConnection.DefaultMaxPoolSize;
+        if (int.TryParse(configuration["POSTGRES_MAX_POOL_SIZE"], NumberStyles.None, CultureInfo.InvariantCulture, out var parsedPool)
+            && parsedPool > 0)
+        {
+            maxPool = parsedPool;
+        }
+
+        var postgres = PostgresConnection.ToNpgsql(postgresRaw, configuration["POSTGRES_SSL_MODE"], maxPool);
 
         var probability = 0.9;
         var rawProbability = configuration["HOTELPULSE_CONFIRM_PROBABILITY"];
@@ -27,18 +37,23 @@ public sealed record HotelPulseSettings(
             probability = Math.Clamp(parsed, 0, 1);
         }
 
-        return new HotelPulseSettings(postgres, redis, rabbit, delays, probability);
+        return new HotelPulseSettings(
+            postgres,
+            redis,
+            rabbit,
+            delays,
+            probability,
+            Flag.IsEnabled(configuration["RUN_WORKER_IN_PROCESS"]));
     }
-}
 
-public static class RedisAddress
-{
-    public static string Normalize(string value)
+    private static string? First(params string?[] values)
     {
-        if (!value.StartsWith("redis://", StringComparison.OrdinalIgnoreCase))
-            return value;
+        foreach (var value in values)
+        {
+            if (!string.IsNullOrWhiteSpace(value))
+                return value;
+        }
 
-        var uri = new Uri(value);
-        return uri.IsDefaultPort ? uri.Host : $"{uri.Host}:{uri.Port}";
+        return null;
     }
 }

@@ -32,6 +32,8 @@ npm run typecheck        # Nuxt / Vue
 
 `HOTELPULSE_STEP_DELAY_MS=0` and `HOTELPULSE_CONFIRM_PROBABILITY=1` make the pipeline immediate and deterministic. Leave them unset for the product pacing (700 ms, 800 ms, 900 ms) and the 90% confirm rate.
 
+`DATABASE_URL`, `REDIS_URL`, and `AMQP_URL` override `POSTGRES_URI`, `REDIS_URI`, and `RABBITMQ_URI`. `RUN_WORKER_IN_PROCESS=true` starts the consumer inside the API process; leave it unset so `apps/worker` stays the consumer. `PORT` is the HTTP port when a host such as Render sets it.
+
 ## Local processes without Compose
 
 Postgres, Redis, and RabbitMQ have to be reachable at the defaults in `HotelPulseSettings` (`localhost`, database `hotelpulse` / `hotelpulse`, guest RabbitMQ on localhost). Then:
