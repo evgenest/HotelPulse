@@ -12,10 +12,11 @@ public static class HotelPulseEndpoints
     public static void Map(WebApplication app)
     {
         app.MapGet("/health", Health);
+        app.MapGet("/health/live", () => Results.Ok(new { status = "ok" }));
         app.MapGet("/api/hotels", ListHotels);
         app.MapGet("/api/hotels/{id}", GetHotel);
         app.MapGet("/api/hotels/{id}/availability", Availability);
-        app.MapPost("/api/bookings", CreateBooking);
+        app.MapPost("/api/bookings", CreateBooking).AddEndpointFilter(LimitBookings);
         app.MapGet("/api/bookings", ListBookings);
         app.MapGet("/api/bookings/{id}", GetBooking);
         app.MapPost("/api/bookings/{id}/cancel", CancelBooking);
@@ -224,6 +225,24 @@ public static class HotelPulseEndpoints
         }
 
         return Results.Conflict(new { error = "The booking changed while it was being cancelled. Try again." });
+    }
+
+    /// <summary>Per-client booking limit; skipped when Redis is down (ADR-0013).</summary>
+    private static async ValueTask<object?> LimitBookings(EndpointFilterInvocationContext context, EndpointFilterDelegate next)
+    {
+        var http = context.HttpContext;
+        var limiter = http.RequestServices.GetRequiredService<BookingRateLimiter>();
+        var now = DateTimeOffset.UtcNow;
+        var client = http.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+        if (await limiter.CheckAsync(client, now) == RateLimitDecision.Limited)
+        {
+            http.Response.Headers.RetryAfter = BookingRateLimiter.SecondsUntilNextWindow(now).ToString(CultureInfo.InvariantCulture);
+            return Results.Json(
+                new { error = "Too many booking requests. Try again in a minute." },
+                statusCode: StatusCodes.Status429TooManyRequests);
+        }
+
+        return await next(context);
     }
 
     private static IResult Cached<T>(HttpContext http, string cacheStatus, T body)

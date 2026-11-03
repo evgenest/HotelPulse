@@ -38,6 +38,7 @@ public static class DependencyInjection
         services.AddSingleton<IBookingStore>(sp => sp.GetRequiredService<BookingRepository>());
         services.AddSingleton<IBookingCommands>(sp => sp.GetRequiredService<BookingRepository>());
         services.AddSingleton<RedisHotelCache>();
+        services.AddSingleton<BookingRateLimiter>();
         services.AddSingleton<HotelCatalog>();
         services.AddSingleton<BookingPublisher>();
         services.AddSingleton<IBookingOutcomePolicy>(new RandomBookingOutcomePolicy(settings.ConfirmProbability));

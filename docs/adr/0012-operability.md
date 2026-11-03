@@ -1,6 +1,6 @@
 # ADR-0012. Эксплуатация: health-проверки, аккуратная остановка, логи, таймауты
 
-**Статус:** принято. Полностью — в Laravel-версии (1.1.0); в .NET есть readiness, аккуратная остановка и таймауты, остальное — следующий шаг.
+**Статус:** принято, в обеих реализациях (1.1.0).
 
 ## Контекст
 Боевую систему запускают, обновляют и перезапускают автоматически: хостинг, Docker, Kubernetes. Ночью у неё никто не сидит.
@@ -18,7 +18,7 @@
 | `/health` — readiness [[38]](glossary.md#t38) (Postgres отвечает?) | не слать трафик, пока база недоступна | .NET, Laravel |
 | `/health/live` — liveness [[38]](glossary.md#t38) (процесс жив?) | перезапустить зависший процесс, но **не** перезапускать из-за упавшей базы | Laravel |
 | Аккуратная остановка [[39]](glossary.md#t39) по SIGTERM | доделать текущее сообщение или пачку outbox и выйти; проверено: worker — 0,5 с, relay — 0,1 с | .NET (`BackgroundService`), Laravel |
-| JSON-логи [[43]](glossary.md#t43) с `X-Request-Id` | искать все строки одного запроса; номер возвращается клиенту | Laravel |
+| JSON-логи [[43]](glossary.md#t43) с `X-Request-Id` | искать все строки одного запроса; номер возвращается клиенту | .NET, Laravel |
 | Таймауты [[42]](glossary.md#t42) | Redis 250 мс, Postgres и RabbitMQ — секунды; ничто не ждёт вечно | обе (в разной степени) |
 | Переподключение | RabbitMQ или Postgres пропали — пауза и повтор, процесс не падает | обе |
 | Перезапуск после падения | supervisord поднимает упавший процесс; найдена и исправлена ловушка Octane, из-за которой перезапуск не работал | Laravel |
@@ -28,11 +28,11 @@
 
 ## Последствия
 - Систему можно спокойно обновлять: незавершённых бронирований после деплоя не остаётся.
-- Следующие шаги: перенести JSON-логи, `X-Request-Id` и liveness в .NET; метрики через OpenTelemetry [[52]](glossary.md#t52).
+- Следующий шаг: метрики через OpenTelemetry [[52]](glossary.md#t52).
 
 ## Коротко, своими словами
 > «Система должна сама рассказывать о себе: жива ли она (liveness), готова ли (readiness), что с ней происходит (логи с номером запроса). При остановке она доделывает начатое, а внешние сервисы ждёт с таймаутом.»
 
 ## Где в коде
-- .NET: `apps/api/Endpoints.cs` (`Health`), `Messaging/BookingConsumer.cs`, `OutboxRelay.cs`
+- .NET: `apps/api/Endpoints.cs` (`Health`, `/health/live`), `apps/api/Middleware.cs`, `apps/api/Program.cs` (JSON-логи), `Messaging/BookingConsumer.cs`, `OutboxRelay.cs`
 - Laravel: `app/Http/Controllers/HealthController.php`, `app/Http/Middleware/RequestId.php`, `docker/entrypoint.sh`, `docker/supervisord.conf`

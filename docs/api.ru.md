@@ -2,7 +2,7 @@
 
 Базовый URL в разработке: `http://localhost:8080` (.NET) или `http://localhost:8081` (Laravel, `--profile laravel`). Обе реализации следуют этому контракту; изменение здесь меняет обе.
 
-В ответах есть `X-Request-Id` (берётся из запроса или создаётся). Laravel-API добавляет `GET /health/live` (liveness, без зависимостей) и отвечает `429` с `Retry-After`, если один клиент шлёт больше 30 бронирований в минуту.
+В ответах есть `X-Request-Id` (берётся из запроса или создаётся). `GET /health/live` — liveness, без зависимостей. `POST /api/bookings` отвечает `429` с `Retry-After`, если один клиент шлёт больше 30 бронирований в минуту (`HOTELPULSE_BOOKING_RATE_LIMIT`, `0` выключает); если Redis недоступен, лимит пропускается.
 
 Даты — `yyyy-MM-dd`. Деньги — число JSON. `createdAt` — UTC.
 

@@ -10,9 +10,11 @@
   `NUXT_PUBLIC_API_BASE_LARAVEL` is set; booking history is kept per backend.
 - Docker Compose profile `laravel`, a Render service for the Laravel API, and
   a Laravel job in CI (Pint, composer audit, Pest, parallel tests three times).
-- Laravel API extras: JSON logs with `X-Request-Id`, `GET /health/live`,
-  security headers, a per-client booking rate limit that is skipped when
-  Redis is down, a bare `500` body.
+- Both APIs: JSON logs with `X-Request-Id`, `GET /health/live`, security
+  headers and no `Server` banner, a per-client booking rate limit
+  (`HOTELPULSE_BOOKING_RATE_LIMIT`, default 30 a minute) that is skipped when
+  Redis is down, a bare `500` body, and containers that run as a non-root user.
+- Docs: ADRs 0007-0014 and `docs/why-not-mvp.md`.
 
 ## 1.0.3 — 2026-11-03
 
