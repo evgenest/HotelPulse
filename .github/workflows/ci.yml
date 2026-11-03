@@ -80,6 +80,15 @@ jobs:
       - name: Unit and integration tests
         run: npm test
 
+      # Races do not show on every run (the deadlock in ADR-0005 showed on
+      # about one run in three), so the parallel tests run twice more.
+      - name: Concurrency tests, repeated
+        run: |
+          for run in 2 3; do
+            dotnet test tests/HotelPulse.IntegrationTests/HotelPulse.IntegrationTests.csproj \
+              -c Release --nologo --no-build --filter "FullyQualifiedName~ConcurrencyTests"
+          done
+
   images:
     name: Docker images
     runs-on: ubuntu-latest
