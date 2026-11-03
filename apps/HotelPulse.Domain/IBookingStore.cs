@@ -24,8 +24,10 @@ public interface IBookingCommands
     /// Sets the booking to cancelled if it is still pending or confirmed and
     /// check-in is after <paramref name="today"/>. Returns the updated booking,
     /// or null when the row no longer matches those conditions.
+    /// <paramref name="cancelEvent"/> is appended to the stored timeline in SQL,
+    /// so steps the worker wrote after the caller read the row are kept.
     /// </summary>
-    Task<Booking?> TryCancelAsync(string id, DateOnly today, IReadOnlyList<BookingEvent> events, CancellationToken ct);
+    Task<Booking?> TryCancelAsync(string id, DateOnly today, BookingEvent cancelEvent, CancellationToken ct);
 }
 
 public sealed record CreateBookingResult(Booking Booking, bool Replay);

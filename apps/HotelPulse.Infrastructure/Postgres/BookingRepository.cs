@@ -175,16 +175,23 @@ public sealed class BookingRepository(NpgsqlDataSource dataSource) : IBookingSto
     public async Task<Booking?> TryCancelAsync(
         string id,
         DateOnly today,
-        IReadOnlyList<BookingEvent> events,
+        BookingEvent cancelEvent,
         CancellationToken ct)
     {
+        // The timeline is rebuilt from the stored value, not from the caller's
+        // copy: the worker may have appended steps since the caller read the row
+        // (the status is still pending, so the WHERE clause still matches).
+        // Same result as BookingTimeline.Cancelled, computed inside the UPDATE.
         await using var connection = await dataSource.OpenConnectionAsync(ct);
         var row = await connection.QuerySingleOrDefaultAsync<BookingRow>(
             """
             UPDATE bookings
             SET status = 'cancelled',
                 cancelled_at = now(),
-                events = @events::jsonb
+                events = (
+                    SELECT coalesce(jsonb_agg(e || '{"current": false}'::jsonb ORDER BY ord), '[]'::jsonb)
+                    FROM jsonb_array_elements(bookings.events) WITH ORDINALITY AS t(e, ord)
+                ) || jsonb_build_array(@cancelEvent::jsonb)
             WHERE id = @id
               AND status IN ('pending', 'confirmed')
               AND check_in > @today
@@ -205,7 +212,7 @@ public sealed class BookingRepository(NpgsqlDataSource dataSource) : IBookingSto
                       cancelled_at,
                       events::text AS events
             """,
-            new { id, today, events = Serialize(events) });
+            new { id, today, cancelEvent = JsonSerializer.Serialize(cancelEvent, HotelPulseJson.Serializer) });
         return row is null ? null : Map(row);
     }
 

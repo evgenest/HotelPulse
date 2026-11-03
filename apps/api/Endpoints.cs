@@ -214,7 +214,7 @@ public static class HotelPulseEndpoints
             var cancelled = await bookings.TryCancelAsync(
                 id,
                 today,
-                BookingTimeline.Cancelled(booking.Events, now),
+                BookingTimeline.CancelledEvent(now),
                 ct);
             if (cancelled is null)
                 continue;
