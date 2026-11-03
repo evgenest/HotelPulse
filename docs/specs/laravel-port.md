@@ -37,7 +37,7 @@ HotelPulse написан на .NET. Нужна вторая реализаци�
 | Postgres | драйвер `pgsql` (PDO) | Тот же SQL, что в .NET. |
 | Redis | `phpredis` (ext) | Быстрее `predis`, есть таймауты подключения. |
 | RabbitMQ | **`php-amqplib/php-amqplib`** напрямую, своя artisan-команда | Laravel-драйверы очередей заворачивают сообщения в свой формат (`{"job": ..., "data": ...}`), а контракт требует наш формат `{bookingId, hotelId, roomId, createdAt}`. Ещё нужен ручной контроль: prefetch=1 [[41]](../adr/glossary.md#t41), ack после терминального статуса, publisher confirms (ADR-0002). |
-| Тесты | Pest 4 | Стандарт в Laravel-сообществе. |
+| Тесты | Pest 5 | Стандарт в Laravel-сообществе. |
 | Статический анализ | Larastan (PHPStan) уровень 8 [[48]](../adr/glossary.md#t48) | Ловит ошибки типов до запуска. |
 | Стиль | Laravel Pint [[48]](../adr/glossary.md#t48) | Единый формат кода, проверка в CI. |
 | Безопасность зависимостей | `composer audit` в CI | Падает на известных уязвимостях. |
