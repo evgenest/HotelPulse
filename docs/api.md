@@ -1,6 +1,8 @@
 # API
 
-Base URL in development: `http://localhost:8080`.
+Base URL in development: `http://localhost:8080` (.NET) or `http://localhost:8081` (Laravel, `--profile laravel`). Both implement this contract; a change here changes both.
+
+Responses also carry `X-Request-Id` (taken from the request or generated). `GET /health/live` is liveness with no dependencies. `POST /api/bookings` answers `429` with `Retry-After` when one client sends more than 30 bookings a minute (`HOTELPULSE_BOOKING_RATE_LIMIT`, `0` turns it off); if Redis is down the limit is skipped.
 
 Dates are `yyyy-MM-dd`. Money is a JSON number. `createdAt` is UTC.
 

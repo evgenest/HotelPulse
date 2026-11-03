@@ -10,6 +10,8 @@ export default defineNuxtConfig({
   runtimeConfig: {
     public: {
       apiBase: 'http://localhost:8080',
+      // Set NUXT_PUBLIC_API_BASE_LARAVEL to show the .NET / Laravel switch.
+      apiBaseLaravel: '',
       appVersion: pkg.version,
       repoUrl: 'https://github.com/evgenest/HotelPulse',
     },

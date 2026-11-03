@@ -10,8 +10,12 @@ public sealed record HotelPulseSettings(
     string RabbitMqUri,
     int[] StepDelayMs,
     double ConfirmProbability,
-    bool RunWorkerInProcess)
+    bool RunWorkerInProcess,
+    int BookingRateLimitPerMinute = HotelPulseSettings.DefaultBookingRateLimit)
 {
+    /// <summary>Booking requests per client IP per minute; 0 turns the limit off.</summary>
+    public const int DefaultBookingRateLimit = 30;
+
     public static HotelPulseSettings From(IConfiguration configuration)
     {
         var postgresRaw = First(configuration["DATABASE_URL"], configuration["POSTGRES_URI"])
@@ -43,7 +47,10 @@ public sealed record HotelPulseSettings(
             rabbit,
             delays,
             probability,
-            Flag.IsEnabled(configuration["RUN_WORKER_IN_PROCESS"]));
+            Flag.IsEnabled(configuration["RUN_WORKER_IN_PROCESS"]),
+            int.TryParse(configuration["HOTELPULSE_BOOKING_RATE_LIMIT"], NumberStyles.None, CultureInfo.InvariantCulture, out var limit)
+                ? limit
+                : DefaultBookingRateLimit);
     }
 
     private static string? First(params string?[] values)

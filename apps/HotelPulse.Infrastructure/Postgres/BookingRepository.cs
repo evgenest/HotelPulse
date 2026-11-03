@@ -69,7 +69,33 @@ public sealed class BookingRepository(NpgsqlDataSource dataSource) : IBookingSto
         return updated == 1;
     }
 
+    private const int MaxCreateAttempts = 3;
+
     public async Task<CreateBookingResult> CreateAsync(
+        Booking booking,
+        string? idempotencyKey,
+        string requestHash,
+        CancellationToken ct)
+    {
+        // Several inserts waiting on the same exclusion-constraint conflict can
+        // deadlock; Postgres then aborts one of them with 40P01. The aborted
+        // transaction changed nothing, so running it again is safe, and the
+        // retry ends as a normal 409 or as an idempotent replay.
+        for (var attempt = 1; ; attempt++)
+        {
+            try
+            {
+                return await CreateOnceAsync(booking, idempotencyKey, requestHash, ct);
+            }
+            catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.DeadlockDetected
+                                               && attempt < MaxCreateAttempts)
+            {
+                await Task.Delay(Random.Shared.Next(5, 25) * attempt, ct);
+            }
+        }
+    }
+
+    private async Task<CreateBookingResult> CreateOnceAsync(
         Booking booking,
         string? idempotencyKey,
         string requestHash,
@@ -87,6 +113,16 @@ public sealed class BookingRepository(NpgsqlDataSource dataSource) : IBookingSto
         await using var tx = await connection.BeginTransactionAsync(ct);
         try
         {
+            // Queue inserts for the same room behind one transaction-scoped
+            // lock. Without it, parallel inserts that conflict on the exclusion
+            // constraint wait on each other and Postgres aborts them as
+            // deadlocks (40P01). The lock only orders the inserts; the
+            // constraint is still what forbids the overlap.
+            await connection.ExecuteAsync(
+                "SELECT pg_advisory_xact_lock(hashtextextended(@roomKey, 0))",
+                new { roomKey = booking.HotelId + "/" + booking.RoomId },
+                tx);
+
             if (idempotencyKey is not null)
             {
                 var existing = await FindReplayAsync(connection, tx, idempotencyKey, requestHash);
@@ -158,6 +194,19 @@ public sealed class BookingRepository(NpgsqlDataSource dataSource) : IBookingSto
         catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.ExclusionViolation)
         {
             await tx.RollbackAsync(ct);
+
+            // A parallel request with the same Idempotency-Key inserts the same
+            // stay, so its booking row trips the exclusion constraint before our
+            // idempotency_keys insert can hit the primary key. Postgres reports
+            // the violation only after the other transaction committed, so its
+            // key is visible now: answer with that booking instead of 409.
+            if (idempotencyKey is not null)
+            {
+                var existing = await FindReplayAsync(connection, null, idempotencyKey, requestHash);
+                if (existing is not null)
+                    return existing;
+            }
+
             throw new RoomUnavailableException();
         }
         catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.UniqueViolation
@@ -175,16 +224,23 @@ public sealed class BookingRepository(NpgsqlDataSource dataSource) : IBookingSto
     public async Task<Booking?> TryCancelAsync(
         string id,
         DateOnly today,
-        IReadOnlyList<BookingEvent> events,
+        BookingEvent cancelEvent,
         CancellationToken ct)
     {
+        // The timeline is rebuilt from the stored value, not from the caller's
+        // copy: the worker may have appended steps since the caller read the row
+        // (the status is still pending, so the WHERE clause still matches).
+        // Same result as BookingTimeline.Cancelled, computed inside the UPDATE.
         await using var connection = await dataSource.OpenConnectionAsync(ct);
         var row = await connection.QuerySingleOrDefaultAsync<BookingRow>(
             """
             UPDATE bookings
             SET status = 'cancelled',
                 cancelled_at = now(),
-                events = @events::jsonb
+                events = (
+                    SELECT coalesce(jsonb_agg(e || '{"current": false}'::jsonb ORDER BY ord), '[]'::jsonb)
+                    FROM jsonb_array_elements(bookings.events) WITH ORDINALITY AS t(e, ord)
+                ) || jsonb_build_array(@cancelEvent::jsonb)
             WHERE id = @id
               AND status IN ('pending', 'confirmed')
               AND check_in > @today
@@ -205,7 +261,7 @@ public sealed class BookingRepository(NpgsqlDataSource dataSource) : IBookingSto
                       cancelled_at,
                       events::text AS events
             """,
-            new { id, today, events = Serialize(events) });
+            new { id, today, cancelEvent = JsonSerializer.Serialize(cancelEvent, HotelPulseJson.Serializer) });
         return row is null ? null : Map(row);
     }
 

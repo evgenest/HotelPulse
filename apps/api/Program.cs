@@ -4,6 +4,16 @@ using HotelPulse.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// One JSON object per line, with the request id from the scope (ADR-0012).
+builder.Logging.ClearProviders();
+builder.Logging.AddJsonConsole(options =>
+{
+    options.IncludeScopes = true;
+    options.UseUtcTimestamp = true;
+    options.TimestampFormat = "yyyy-MM-ddTHH:mm:ss.fffZ";
+});
+builder.WebHost.ConfigureKestrel(options => options.AddServerHeader = false);
+
 var listen = ListenAddress.ForPort(builder.Configuration["PORT"]);
 if (listen is not null)
     builder.WebHost.UseUrls(listen);
@@ -28,6 +38,7 @@ builder.Services.AddCors(opt =>
 builder.Services.AddHotelPulse(builder.Configuration, HotelPulseRole.Api);
 
 var app = builder.Build();
+HotelPulseMiddleware.Use(app);
 app.UseCors();
 HotelPulseEndpoints.Map(app);
 app.Run();

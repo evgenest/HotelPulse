@@ -80,6 +80,92 @@ jobs:
       - name: Unit and integration tests
         run: npm test
 
+      # Races do not show on every run (the deadlock in ADR-0005 showed on
+      # about one run in three), so the parallel tests run twice more.
+      - name: Concurrency tests, repeated
+        run: |
+          for run in 2 3; do
+            dotnet test tests/HotelPulse.IntegrationTests/HotelPulse.IntegrationTests.csproj \
+              -c Release --nologo --no-build --filter "FullyQualifiedName~ConcurrencyTests"
+          done
+
+  laravel:
+    name: Laravel API (PHP 8.5)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_USER: hotelpulse
+          POSTGRES_PASSWORD: hotelpulse
+          POSTGRES_DB: hotelpulse_laravel
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U hotelpulse -d hotelpulse_laravel"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+      redis:
+        image: redis:8-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 20
+      rabbitmq:
+        image: rabbitmq:4-alpine
+        env:
+          RABBITMQ_DEFAULT_USER: hotelpulse
+          RABBITMQ_DEFAULT_PASS: hotelpulse
+        ports:
+          - 5672:5672
+        options: >-
+          --health-cmd "rabbitmq-diagnostics -q ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      DATABASE_URL: postgres://hotelpulse:hotelpulse@127.0.0.1:5432/hotelpulse_laravel
+      REDIS_URL: redis://127.0.0.1:6379/1
+      AMQP_URL: amqp://hotelpulse:hotelpulse@127.0.0.1:5672/
+    defaults:
+      run:
+        working-directory: apps/api-laravel
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.5"
+          extensions: pdo_pgsql, redis, pcntl, posix, sockets, bcmath, intl
+          coverage: none
+          tools: composer:v2
+
+      - name: Install dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Generate a throwaway app key
+        run: echo "APP_KEY=$(php artisan key:generate --show --no-ansi)" >> "$GITHUB_ENV"
+
+      - name: Code style
+        run: ./vendor/bin/pint --test
+
+      - name: Known vulnerabilities in dependencies
+        run: composer audit
+
+      - name: Unit and feature tests
+        run: ./vendor/bin/pest
+
+      # Races do not show on every run (ADR-0005), so the parallel tests run twice more.
+      - name: Concurrency tests, repeated
+        run: |
+          for run in 2 3; do
+            ./vendor/bin/pest --filter=ConcurrencyTest
+          done
+
   images:
     name: Docker images
     runs-on: ubuntu-latest
@@ -87,4 +173,4 @@ jobs:
       - uses: actions/checkout@v7
 
       - name: Build images
-        run: docker compose build
+        run: docker compose --profile laravel build

@@ -19,6 +19,7 @@ apps/web/                        Nuxt 4 / Vue 3 / TypeScript
 tests/HotelPulse.UnitTests/      domain tests, no Docker
 tests/HotelPulse.IntegrationTests/  real Postgres, Redis, RabbitMQ
 docs/specs/                      feature specs — one per feature
+docs/adr/                        architecture decision records — read before changing concurrency, outbox or caching
 ```
 
 ## Commands
@@ -62,6 +63,9 @@ commands; a change is not done until CI is green.
   `RedisHotelCache.InvalidateHotelAsync(hotelId)`.**
 - **Redis failures must not fail a request.** The cache returns `BYPASS` and
   the API reads Postgres.
+- Parallel inserts for one room take `pg_advisory_xact_lock` on the room
+  first (ADR-0005), and a write that recomputes a column must compute it in
+  the UPDATE from the stored value, not from an earlier read (ADR-0003).
 - The worker must stay idempotent: a redelivered message for a finished
   booking is acked and ignored.
 - No secrets in the repo. Connection strings come from env vars

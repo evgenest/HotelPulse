@@ -41,10 +41,14 @@ public sealed class BookingPublisher : IBookingPublisher, IAsyncDisposable
             ContentType = "application/json",
         };
 
+        // With publisher confirmation tracking this call returns only after the
+        // broker has acked the message. A nack, or a message no queue accepted
+        // (mandatory), throws PublishException, so the outbox row stays
+        // unpublished and the relay retries it.
         await channel.BasicPublishAsync(
             ExchangeName,
             RoutingKey,
-            mandatory: false,
+            mandatory: true,
             basicProperties: props,
             body: body,
             cancellationToken: ct);
@@ -71,7 +75,11 @@ public sealed class BookingPublisher : IBookingPublisher, IAsyncDisposable
             var previousChannel = _channel;
             var previousConnection = _connection;
             var connection = await _factory.CreateConnectionAsync(ct);
-            var channel = await connection.CreateChannelAsync(cancellationToken: ct);
+            var channel = await connection.CreateChannelAsync(
+                new CreateChannelOptions(
+                    publisherConfirmationsEnabled: true,
+                    publisherConfirmationTrackingEnabled: true),
+                ct);
 
             try
             {

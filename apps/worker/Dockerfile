@@ -13,4 +13,5 @@ RUN dotnet publish apps/worker/HotelPulse.Worker.csproj -c Release -o /app/publi
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
 WORKDIR /app
 COPY --from=build /app/publish .
+USER $APP_UID
 ENTRYPOINT ["dotnet", "HotelPulse.Worker.dll"]

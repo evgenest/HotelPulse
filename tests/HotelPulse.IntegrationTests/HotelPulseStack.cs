@@ -36,6 +36,7 @@ public sealed class HotelPulseStack : IAsyncLifetime
 
     public HttpClient Client { get; private set; } = null!;
     public string PostgresUri { get; private set; } = "";
+    public string RedisUri { get; private set; } = "";
 
     public async Task InitializeAsync()
     {
@@ -64,11 +65,14 @@ public sealed class HotelPulseStack : IAsyncLifetime
 
         PostgresUri = postgres;
         var redisUri = redis;
+        RedisUri = redisUri;
         Environment.SetEnvironmentVariable("POSTGRES_URI", PostgresUri);
         Environment.SetEnvironmentVariable("REDIS_URI", redisUri);
         Environment.SetEnvironmentVariable("RABBITMQ_URI", rabbit);
         Environment.SetEnvironmentVariable("HOTELPULSE_STEP_DELAY_MS", "0");
         Environment.SetEnvironmentVariable("HOTELPULSE_CONFIRM_PROBABILITY", "1");
+        // The limit has its own test (ProductionBehaviourTests); other tests post freely.
+        Environment.SetEnvironmentVariable("HOTELPULSE_BOOKING_RATE_LIMIT", "0");
 
         _factory = new HotelPulseApiFactory();
         Client = _factory.CreateClient();

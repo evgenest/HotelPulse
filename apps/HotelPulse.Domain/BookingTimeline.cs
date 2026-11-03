@@ -51,8 +51,11 @@ public static class BookingTimeline
     public static IReadOnlyList<BookingEvent> Cancelled(IReadOnlyList<BookingEvent> events, DateTime utcNow) =>
     [
         .. events.Select(e => e with { Current = false }),
-        new(BookingLabels.Cancelled, true, Format(utcNow), false),
+        CancelledEvent(utcNow),
     ];
+
+    public static BookingEvent CancelledEvent(DateTime utcNow) =>
+        new(BookingLabels.Cancelled, true, Format(utcNow), false);
 
     public static string Format(DateTime utc) => utc.ToString("HH:mm:ss");
 }
