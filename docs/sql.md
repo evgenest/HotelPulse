@@ -27,7 +27,7 @@ ORDER BY r.price, r.id;
 
 ## Measured plan
 
-Against PostgreSQL 17 with the six hotels, 19 rooms, and 20,000 confirmed one-night stays on The Porter's `r1` (`ANALYZE` first):
+Against PostgreSQL 18 with the six hotels, 19 rooms, and 20,000 confirmed one-night stays on The Porter's `r1` (`ANALYZE` first). The plan below was captured on PostgreSQL 17; the same indexes serve the query on 18:
 
 ```text
 Sort  (cost=8.53..8.54 rows=4 width=9) (actual time=0.080..0.080 rows=4 loops=1)

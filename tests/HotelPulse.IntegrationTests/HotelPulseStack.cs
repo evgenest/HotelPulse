@@ -45,12 +45,12 @@ public sealed class HotelPulseStack : IAsyncLifetime
 
         if (string.IsNullOrWhiteSpace(postgres) || string.IsNullOrWhiteSpace(redis) || string.IsNullOrWhiteSpace(rabbit))
         {
-            _postgres = new PostgreSqlBuilder("postgres:17-alpine")
+            _postgres = new PostgreSqlBuilder("postgres:18-alpine")
                 .WithDatabase("hotelpulse")
                 .WithUsername("hotelpulse")
                 .WithPassword("hotelpulse")
                 .Build();
-            _redis = new RedisBuilder("redis:7-alpine").Build();
+            _redis = new RedisBuilder("redis:8-alpine").Build();
             _rabbit = new RabbitMqBuilder("rabbitmq:4-alpine")
                 .WithUsername("hotelpulse")
                 .WithPassword("hotelpulse")

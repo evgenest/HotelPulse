@@ -31,8 +31,8 @@ flowchart LR
 | Часть | Где |
 |---|---|
 | C# / .NET 10 | `apps/api`, `apps/worker`, общие проекты домена и инфраструктуры |
-| PostgreSQL 17 | Отели, номера, брони. SQL-миграции, exclusion-constraint, частичные индексы |
-| Redis 7 | Кэш каталога и чтений доступности |
+| PostgreSQL 18 | Отели, номера, брони. SQL-миграции, exclusion-constraint, частичные индексы |
+| Redis 8 | Кэш каталога и чтений доступности |
 | RabbitMQ 4 | Устойчивая очередь `bookings.created`, ручной ack, transactional outbox |
 | Nuxt 4 / Vue 3 / TypeScript | `apps/web` |
 | xUnit | Юнит- и интеграционные тесты. Testcontainers локально, service containers в CI |

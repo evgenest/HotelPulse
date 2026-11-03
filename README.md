@@ -36,8 +36,8 @@ Hotel list, hotel detail, and availability are cached in Redis. A booking write 
 | Piece | Where |
 |---|---|
 | C# / .NET 10 | `apps/api`, `apps/worker`, shared domain and infrastructure projects |
-| PostgreSQL 17 | Hotels, rooms, bookings. SQL migrations, exclusion constraint, partial indexes |
-| Redis 7 | Cache for catalog and availability reads |
+| PostgreSQL 18 | Hotels, rooms, bookings. SQL migrations, exclusion constraint, partial indexes |
+| Redis 8 | Cache for catalog and availability reads |
 | RabbitMQ 4 | Durable `bookings.created` queue, manual ack, transactional outbox |
 | Nuxt 4 / Vue 3 / TypeScript | `apps/web` |
 | xUnit | Unit tests and integration tests. Testcontainers locally, service containers in CI |
