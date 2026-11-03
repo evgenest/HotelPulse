@@ -68,6 +68,18 @@ Kubernetes manifests in `k8s/` are a second way to run the same processes. They 
 | Postgres | Neon free | External. May scale to zero. Not a Render database. |
 | RabbitMQ | CloudAMQP free | External `amqps://` URL. |
 
+### Neon project
+
+The repo is linked to the Neon project `hotelpulse` (aws-eu-central-1, Postgres 18, branch `production`). `neon.ts` holds the branch policy and `neon deploy` applies it:
+
+```bash
+npm install                       # @neon/config and @neon/env for neon.ts
+neon init -y --org-id org-late-dawn-97216763 --project-id dawn-dew-90649331 --branch production --services postgres
+neon deploy                       # applies neon.ts, writes DATABASE_URL / DATABASE_URL_UNPOOLED to .env.local
+```
+
+`.env.local` and `.neon` are gitignored. The API uses `DATABASE_URL`, the **pooled** (`-pooler`) host with `sslmode=require`, over Npgsql TCP. `DATABASE_URL_UNPOOLED` is only for admin work such as `psql` sessions that need session state.
+
 ### What you set by hand
 
 On the first Blueprint apply, Render asks for every `sync: false` variable:
