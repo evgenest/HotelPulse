@@ -5,7 +5,9 @@ declare(strict_types=1);
 // Same policy as the .NET API: CORS_ORIGINS is a comma-separated list; empty
 // or "*" allows any origin (local development only).
 
-$origins = config('hotelpulse.cors_origins', []);
+// Read the env var here: config files load in alphabetical order, so
+// config('hotelpulse.…') would still be empty while this file loads.
+$origins = array_values(array_filter(array_map('trim', explode(',', (string) env('CORS_ORIGINS', '')))));
 
 return [
     'paths' => ['api/*', 'health', 'health/*'],

@@ -27,7 +27,7 @@
 | 7 | Outbox relay (confirms + mandatory) и consumer (prefetch 1, DeliveryPolicy, SIGTERM) на php-amqplib | ✅ |
 | 8 | Интеграционные тесты (включая параллельные) + CI | ✅ 147 тестов; job `laravel` в CI (PHP 8.5, Pint, composer audit, Pest, параллельные ×3) |
 | 9 | Переключатель «.NET / Laravel» в шапке; своя история бронирований на каждый бэкенд; без `NUXT_PUBLIC_API_BASE_LARAVEL` переключатель скрыт | ✅ (typecheck; в браузере проверю после деплоя) |
-| 10 | Деплой (Render, Docker + supervisord) и документация | 🔧 в работе: Octane + FrankenPHP запускается и отвечает; дальше Dockerfile, supervisord, compose, render.yaml, документация |
+| 10 | Деплой (Render, Docker + supervisord) и документация | 🔧 в работе: Dockerfile, entrypoint (проверка `APP_KEY` работает), supervisord написаны; режим `all` в контейнере пока не поднимает API — отлаживаю. Дальше compose, render.yaml, документация |
 
 ## Как продолжить в новой сессии
 
@@ -44,6 +44,8 @@
 - CI на GitHub таких ограничений не имеет.
 
 ## Журнал
+
+- 2026-11-03 — исправлено: `config/cors.php` читал `config('hotelpulse.cors_origins')`, но конфиги грузятся по алфавиту, и значение было пустым → CORS разрешал всем. Теперь читается переменная окружения напрямую.
 
 - 2026-11-03 — Octane + FrankenPHP. Найдено: без `APP_KEY` воркер Octane падает при старте, а Octane не показывает причину (под FrankenPHP нет константы `STDERR`, и его обработчик ошибок сам падает). Видно только «worker has not reached frankenphp_handle_request()». Решение: стартовый скрипт контейнера проверяет `APP_KEY` и пишет понятную ошибку.
 

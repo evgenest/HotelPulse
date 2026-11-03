@@ -20,6 +20,4 @@ return [
     'confirm_probability' => env('HOTELPULSE_CONFIRM_PROBABILITY'),
 
     'booking_rate_limit_per_minute' => (int) env('HOTELPULSE_BOOKING_RATE_LIMIT', 30),
-
-    'cors_origins' => array_values(array_filter(array_map('trim', explode(',', (string) env('CORS_ORIGINS', ''))))),
 ];
