@@ -162,6 +162,8 @@ button { font-family: inherit; }
 .btn-primary:hover { filter: brightness(.94); background: var(--accent); }
 .btn-ghost { background: transparent; border-color: transparent; }
 .btn-ghost:hover { background: var(--surface-2); border-color: transparent; }
+/* Toggle state: the label stays "Bookings", the open panel shows as a pressed button. */
+.nav-history[aria-expanded="true"] { background: var(--surface-2); border-color: var(--border); color: var(--ink); }
 .btn-sm { height: 32px; padding: 0 12px; font-size: 13px; border-radius: 8px; }
 .btn-lg { height: 48px; padding: 0 22px; font-size: 15px; border-radius: 12px; }
 
@@ -273,6 +275,7 @@ button { font-family: inherit; }
 /* ─── Hero variants ──────────────────────────────── */
 .hero { padding: 56px 0 40px; }
 .hero h1 { margin-bottom: 18px; }
+.hero .row { flex-wrap: wrap; } /* the two CTAs stack on the narrowest phones */
 .hero p.lede { font-size: 18px; color: var(--muted); max-width: 540px; line-height: 1.5; margin: 0 0 28px; }
 .hero-split { display: grid; grid-template-columns: 1.05fr .95fr; gap: 48px; align-items: center; }
 .hero-split > * { min-width: 0; }
@@ -552,8 +555,6 @@ button { font-family: inherit; }
 /* The status pills duplicate the queue panel; drop them where the header is tight. */
 @media (max-width: 560px) {
   .nav-status { display: none; }
-  .nav-history-label { display: none; }
-  .nav-history { width: 32px; padding: 0; justify-content: center; }
 }
 
 /* Event timeline */
