@@ -4,7 +4,12 @@
 
 HotelPulse is a small hotel booking service. A guest picks a room, the API accepts the request immediately, and a worker confirms the stay from a durable queue. The room cannot be sold twice for the same dates.
 
-Live demo: _add the public URL after the VPS deploy._
+## Live demo
+
+- Web: https://hotelpulse-web.onrender.com
+- API: https://hotelpulse-api.onrender.com ([`/health`](https://hotelpulse-api.onrender.com/health), [`/api/hotels`](https://hotelpulse-api.onrender.com/api/hotels))
+
+Both run on Render's free plan in Frankfurt, with Postgres on Neon and RabbitMQ on CloudAMQP. Free services sleep when idle, so the first request can take up to a minute.
 
 ## Architecture
 
