@@ -25,8 +25,8 @@
 | 5 | Репозитории (CAS, advisory lock, replay — как в ADR-0001…0005), кэш с BYPASS, классификатор ошибок | ✅ |
 | 6 | HTTP-эндпоинты (9 маршрутов), X-Request-Id, заголовки безопасности, rate limit через Redis с пропуском при сбое, единый ответ на 500 | ✅ |
 | 7 | Outbox relay (confirms + mandatory) и consumer (prefetch 1, DeliveryPolicy, SIGTERM) на php-amqplib | ✅ |
-| 8 | Интеграционные тесты (включая параллельные) + CI | 🔧 в работе: все тесты PHP зелёные локально (147, три прогона подряд); осталось — job PHP в CI |
-| 9 | Переключатель бэкенда на фронте | ⏳ |
+| 8 | Интеграционные тесты (включая параллельные) + CI | ✅ 147 тестов; job `laravel` в CI (PHP 8.5, Pint, composer audit, Pest, параллельные ×3) |
+| 9 | Переключатель бэкенда на фронте | ⏭ следующий шаг |
 | 10 | Деплой (Render, Docker + supervisord) и документация | ⏳ |
 
 ## Как продолжить в новой сессии
@@ -34,7 +34,7 @@
 1. `git checkout claude/epic-cori-g8qizf && git pull`
 2. Прочитать этот файл, план и `docs/adr/`.
 3. .NET-тесты в облачной сессии: установить SDK (`dotnet-install.sh --jsonfile global.json`), запустить `dockerd`, затем `npm run test:unit` и `npm run test:integration`.
-4. Следующая задача — пункт 8 этапа 1: feature-тесты Pest против настоящих Postgres/Redis/RabbitMQ и job PHP в CI. Запуск тестов PHP: `docker run --rm -v $PWD/apps/api-laravel:/app -w /app <образ PHP 8.5 с pdo_pgsql, redis, pcntl, sockets, bcmath> ./vendor/bin/pest`.
+4. Следующая задача — пункт 9 этапа 1: переключатель бэкенда на фронте. Перед этим проверить, что job `laravel` в CI зелёный. Запуск тестов PHP: `docker run --rm -v $PWD/apps/api-laravel:/app -w /app <образ PHP 8.5 с pdo_pgsql, redis, pcntl, sockets, bcmath> ./vendor/bin/pest`.
 
 ### Известные ограничения облачной сессии (не проекта)
 
