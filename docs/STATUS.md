@@ -48,6 +48,8 @@
 
 ## Журнал
 
+- 2026-11-03 — CI #45 упал на сборке Laravel-образа: в Dockerfile не было PHP-расширения `zip`, без него composer не распаковывает пакеты (в песочнице не всплыло, там зависимости ставились из git). Добавлено. Заодно compose собирает образ Laravel один раз, а не трижды.
+
 - 2026-11-03 — документация: README/README.ru (раздел «Две реализации»), api.md/api.ru.md, DEPLOY.md (Laravel на Render), CHANGELOG 1.1.0, версия 1.1.0 во всех трёх местах.
 
 - 2026-11-03 — compose: Laravel в профиле `laravel` (обычный `docker compose up` не меняется), свой Postgres на 5433, API на 8081. У relay и worker отключён HTTP-healthcheck из Dockerfile, иначе Docker считал бы их `unhealthy`. Render: третий бесплатный сервис в режиме `all`, `APP_KEY` генерирует Render. CI собирает и Laravel-образ.

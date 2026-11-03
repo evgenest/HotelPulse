@@ -115,6 +115,7 @@ services:
   api-laravel:
     profiles: ["laravel"]
     build: ./apps/api-laravel
+    image: hotelpulse-api-laravel:dev
     command: ["web"]
     ports:
       - "8081:8080"
@@ -137,7 +138,7 @@ services:
 
   relay-laravel:
     profiles: ["laravel"]
-    build: ./apps/api-laravel
+    image: hotelpulse-api-laravel:dev  # built by api-laravel
     command: ["relay"]
     environment: *laravel-env
     healthcheck:
@@ -151,7 +152,7 @@ services:
 
   worker-laravel:
     profiles: ["laravel"]
-    build: ./apps/api-laravel
+    image: hotelpulse-api-laravel:dev  # built by api-laravel
     command: ["consume"]
     environment: *laravel-env
     healthcheck:

@@ -10,7 +10,7 @@
 # PHP 8.5.x patch releases arrive with a rebuild; moving to 8.6 is a manual
 # change of the tag below after reading its changelog.
 FROM dunglas/frankenphp:php8.5 AS base
-RUN install-php-extensions pdo_pgsql redis pcntl sockets intl bcmath opcache \
+RUN install-php-extensions pdo_pgsql redis pcntl sockets intl bcmath opcache zip \
     && apt-get update \
     && apt-get install -y --no-install-recommends supervisor \
     && rm -rf /var/lib/apt/lists/*
