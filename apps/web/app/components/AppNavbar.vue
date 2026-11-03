@@ -38,11 +38,11 @@
         <button
           class="btn btn-sm btn-ghost nav-history"
           :aria-expanded="historyOpen"
-          :aria-label="historyOpen ? 'Hide booking history' : 'Show booking history'"
+          :title="historyOpen ? 'Hide your bookings' : 'Show your bookings'"
           @click="$emit('toggle-history')"
         >
           <IconHistory />
-          <span class="nav-history-label">{{ historyOpen ? 'Hide' : 'History' }}</span>
+          Bookings
         </button>
       </div>
     </div>
