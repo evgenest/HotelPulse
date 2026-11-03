@@ -10,7 +10,7 @@
     <div class="qv-hd">
       <div class="t">
         <span class="live" />
-        rabbitmq · bookings.created
+        rabbitmq · {{ stack.queue }}
       </div>
       <button class="qv-min" title="Minimize" @click="minimized = true">–</button>
     </div>
@@ -18,7 +18,7 @@
       <!-- Stage nodes -->
       <div class="qv-stage">
         <div class="node"><div class="h">api</div><div class="v">publisher</div></div>
-        <div class="node"><div class="h">exchange</div><div class="v">hotelpulse</div></div>
+        <div class="node"><div class="h">exchange</div><div class="v">{{ stack.exchange }}</div></div>
         <div class="node"><div class="h">worker</div><div class="v">{{ state.workerOnline ? 'consuming' : 'offline' }}</div></div>
       </div>
 
@@ -51,6 +51,9 @@
 
 <script setup lang="ts">
 import { useQueueStore } from '~/composables/useQueueStore'
+
+// Exchange and queue names of the backend picked in the header.
+const { stack } = useBackend()
 
 defineProps<{
   state: { totalPublished: number; totalAcked: number; inflight: number; workerOnline: boolean }

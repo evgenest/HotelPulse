@@ -4,10 +4,31 @@
 
 export type BackendId = 'dotnet' | 'laravel'
 
+/** What the architecture card and the queue widget show for each backend. */
+export interface BackendStack {
+  api: string
+  worker: string
+  exchange: string
+  queue: string
+}
+
 export interface BackendOption {
   id: BackendId
   label: string
   apiBase: string
+  stack: BackendStack
+}
+
+// Exchange and queue names match each API's config, so the two stacks
+// never share a queue (docs/specs/laravel-port.md → isolation).
+const STACKS: Record<BackendId, BackendStack> = {
+  dotnet: { api: '.NET 10', worker: 'BackgroundService', exchange: 'hotelpulse', queue: 'bookings.created' },
+  laravel: {
+    api: 'Laravel 13',
+    worker: 'artisan consume',
+    exchange: 'hotelpulse.laravel',
+    queue: 'bookings.created.laravel',
+  },
 }
 
 const LS_KEY = 'hp.backend'
@@ -32,9 +53,11 @@ function store(id: BackendId) {
 export function useBackend() {
   const config = useRuntimeConfig().public
   const options = computed<BackendOption[]>(() => {
-    const list: BackendOption[] = [{ id: 'dotnet', label: '.NET', apiBase: config.apiBase as string }]
+    const list: BackendOption[] = [
+      { id: 'dotnet', label: '.NET', apiBase: config.apiBase as string, stack: STACKS.dotnet },
+    ]
     const laravel = (config.apiBaseLaravel as string | undefined)?.trim()
-    if (laravel) list.push({ id: 'laravel', label: 'Laravel', apiBase: laravel })
+    if (laravel) list.push({ id: 'laravel', label: 'Laravel', apiBase: laravel, stack: STACKS.laravel })
     return list
   })
 
@@ -53,6 +76,7 @@ export function useBackend() {
     options,
     current,
     apiBase: computed(() => current.value.apiBase),
+    stack: computed(() => current.value.stack),
     switchable: computed(() => options.value.length > 1),
     select,
   }
