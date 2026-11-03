@@ -156,6 +156,9 @@ jobs:
       - name: Known vulnerabilities in dependencies
         run: composer audit
 
+      - name: Static analysis (Larastan, level 8)
+        run: ./vendor/bin/phpstan analyse --no-progress --memory-limit=1G
+
       - name: Unit and feature tests
         run: ./vendor/bin/pest
 

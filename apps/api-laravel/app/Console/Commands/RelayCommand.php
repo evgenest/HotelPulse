@@ -32,7 +32,7 @@ final class RelayCommand extends Command
         $publisher = new BookingPublisher(AmqpConnector::fromConfig());
         Log::info('Outbox relay started');
 
-        while (! $this->stopping) {
+        while (! $this->stopRequested()) {
             try {
                 $published = $this->publishBatch($publisher);
                 if ($this->option('once')) {
@@ -78,6 +78,21 @@ final class RelayCommand extends Command
         });
     }
 
+    /**
+     * Handles pending signals, then reports whether one asked us to stop.
+     * The answer can change between two calls.
+     *
+     * @phpstan-impure
+     */
+    private function stopRequested(): bool
+    {
+        if (function_exists('pcntl_signal_dispatch')) {
+            pcntl_signal_dispatch();
+        }
+
+        return $this->stopping;
+    }
+
     /** SIGTERM / SIGINT: finish the current batch, then exit (graceful shutdown). */
     private function trapSignals(): void
     {
@@ -94,7 +109,7 @@ final class RelayCommand extends Command
 
     private function pause(int $ms): void
     {
-        for ($waited = 0; $waited < $ms && ! $this->stopping; $waited += 50) {
+        for ($waited = 0; $waited < $ms && ! $this->stopRequested(); $waited += 50) {
             usleep(50_000);
         }
     }

@@ -37,12 +37,12 @@ final class ConsumeCommand extends Command
         $this->trapSignals();
         $connector = AmqpConnector::fromConfig();
 
-        while (! $this->stopping) {
+        while (! $this->stopRequested()) {
             try {
                 $this->consume($connector, $processor, $cache);
             } catch (Throwable $e) {
                 Log::error('RabbitMQ error; reconnecting in 5s', ['error' => $e->getMessage()]);
-                for ($waited = 0; $waited < 5000 && ! $this->stopping; $waited += 100) {
+                for ($waited = 0; $waited < 5000 && ! $this->stopRequested(); $waited += 100) {
                     usleep(100_000);
                 }
             }
@@ -71,7 +71,7 @@ final class ConsumeCommand extends Command
             );
             Log::info('Consuming', ['queue' => $connector->queue()]);
 
-            while (! $this->stopping && $channel->is_consuming()) {
+            while (! $this->stopRequested() && $channel->is_consuming()) {
                 try {
                     $channel->wait(null, false, 1.0);
                 } catch (AMQPTimeoutException) {
@@ -129,6 +129,21 @@ final class ConsumeCommand extends Command
                 QueueAction::Discard => $delivery->nack(false),
             };
         }
+    }
+
+    /**
+     * Handles pending signals, then reports whether one asked us to stop.
+     * The answer can change between two calls.
+     *
+     * @phpstan-impure
+     */
+    private function stopRequested(): bool
+    {
+        if (function_exists('pcntl_signal_dispatch')) {
+            pcntl_signal_dispatch();
+        }
+
+        return $this->stopping;
     }
 
     /** SIGTERM / SIGINT: finish the current message, then exit (graceful shutdown). */

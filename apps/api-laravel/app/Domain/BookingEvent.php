@@ -28,6 +28,7 @@ final readonly class BookingEvent implements JsonSerializable
     }
 
     /** Same JSON as the .NET API: camelCase, null time omitted. */
+    /** @return array<string, mixed> */
     public function jsonSerialize(): array
     {
         $json = ['label' => $this->label, 'done' => $this->done];

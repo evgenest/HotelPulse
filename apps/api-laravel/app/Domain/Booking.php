@@ -33,6 +33,7 @@ final readonly class Booking implements JsonSerializable
     ) {}
 
     /** Same field names, order and null handling as the .NET API (nulls omitted). */
+    /** @return array<string, mixed> */
     public function jsonSerialize(): array
     {
         $json = [

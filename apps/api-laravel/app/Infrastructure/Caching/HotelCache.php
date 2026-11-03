@@ -26,7 +26,7 @@ final readonly class HotelCache
         try {
             $value = $this->redis->connection()->get($key);
 
-            return $value === null || $value === false ? 0 : (int) $value;
+            return $value === null ? 0 : (int) $value;
         } catch (Throwable $e) {
             $this->log->warning('Redis version read failed', ['key' => $key, 'error' => $e->getMessage()]);
 
@@ -41,7 +41,7 @@ final readonly class HotelCache
     {
         try {
             $value = $this->redis->connection()->get($key);
-            if ($value === null || $value === false) {
+            if ($value === null) {
                 return [true, null];
             }
 

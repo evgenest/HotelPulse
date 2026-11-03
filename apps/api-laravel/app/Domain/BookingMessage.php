@@ -42,6 +42,7 @@ final readonly class BookingMessage implements JsonSerializable
         );
     }
 
+    /** @return array<string, mixed> */
     public function jsonSerialize(): array
     {
         return [
