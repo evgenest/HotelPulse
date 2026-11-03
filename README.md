@@ -18,7 +18,7 @@ The web app has a **.NET / Laravel** switch in the header. All three run on Rend
 
 ```mermaid
 flowchart LR
-  web["Nuxt"] -->|HTTP| api[".NET API"]
+  web["Nuxt<br/>.NET / Laravel switch"] -->|HTTP| api[".NET API<br/>or Laravel API"]
   api -->|SQL| pg["PostgreSQL"]
   api -->|read-through| redis["Redis"]
   api -->|outbox| mq["RabbitMQ"]
@@ -28,7 +28,9 @@ flowchart LR
   web -->|poll booking| api
 ```
 
-`POST /api/bookings` validates the stay, writes the booking and an outbox row in one transaction, and returns **202 Accepted** with `status: pending`. A relay in the API publishes `booking.created` to the durable queue `bookings.created`. The worker advances the event timeline and sets `confirmed` or `rejected`. The page polls `GET /api/bookings/{id}` until that happens.
+Both implementations follow this flow; each has its own database, its own exchange and queue, and its own Redis key prefix, so they run side by side.
+
+`POST /api/bookings` validates the stay, writes the booking and an outbox row in one transaction, and returns **202 Accepted** with `status: pending`. A relay publishes `booking.created` to a durable queue: `bookings.created` for .NET (the relay runs inside the API), `bookings.created.laravel` for Laravel (the relay is its own process). The worker advances the event timeline and sets `confirmed` or `rejected`. The page polls `GET /api/bookings/{id}` until that happens.
 
 If the worker is down, the message stays in RabbitMQ and the booking stays `pending`. Starting the worker consumes it. A second delivery of a booking that is already finished is acknowledged and ignored. If Postgres rejects the insert because another active stay overlaps, the API returns **409**.
 
@@ -95,6 +97,16 @@ dotnet run --project apps/worker
 cd apps/web && pnpm install && pnpm dev
 ```
 
+The Laravel API (PHP 8.5; set `APP_KEY`, `DATABASE_URL`, `REDIS_URL`, `AMQP_URL`) runs as three processes:
+
+```bash
+cd apps/api-laravel && composer install
+php artisan hotelpulse:migrate
+php artisan octane:frankenphp --port=8081   # or: php artisan serve --port=8081
+php artisan hotelpulse:relay
+php artisan hotelpulse:consume
+```
+
 Kubernetes: build the images, load them into `kind` or `minikube`, then apply the namespace before the other manifests.
 
 ```bash
@@ -153,9 +165,9 @@ The same sequence works from the site: stop the worker, book a room, watch the p
 
 [`DEPLOY.md`](DEPLOY.md) covers two ways to run it.
 
-A VPS uses `docker-compose.prod.yml`: copy `.env.example` to `.env`, point DNS at the machine, and run `docker compose -f docker-compose.prod.yml up -d --build`. Caddy requests the certificate. The worker is its own container.
+A VPS uses `docker-compose.prod.yml`: copy `.env.example` to `.env`, point DNS at the machine, and run `docker compose -f docker-compose.prod.yml up -d --build`. Caddy requests the certificate. The worker is its own container. The VPS file and the Kubernetes manifests run the .NET API only; the Laravel API runs through the Compose `laravel` profile locally and as its own service on Render.
 
-A free Render demo uses [`render.yaml`](render.yaml). The API and the Nuxt server are free web services, Redis is Render Key Value, Postgres is a Neon database, and RabbitMQ is CloudAMQP. Render's free plan has no background workers, so that Blueprint sets `RUN_WORKER_IN_PROCESS=true` and the API process consumes the queue itself. That flag stays off for Compose, Kubernetes, and `apps/worker`. The API reads `DATABASE_URL`, `REDIS_URL`, `AMQP_URL`, and `PORT` when those are set, and still accepts `POSTGRES_URI`, `REDIS_URI`, and `RABBITMQ_URI` for the local stack. Nothing in this repository is deployed on its own.
+A free Render demo uses [`render.yaml`](render.yaml). The .NET API, the Laravel API and the Nuxt server are free web services, Redis is Render Key Value, Postgres is a Neon database, and RabbitMQ is CloudAMQP. Render's free plan has no background workers, so that Blueprint sets `RUN_WORKER_IN_PROCESS=true` and the .NET API process consumes the queue itself; the Laravel container runs web, relay and worker together under supervisord. That flag stays off for Compose, Kubernetes, and `apps/worker`. The API reads `DATABASE_URL`, `REDIS_URL`, `AMQP_URL`, and `PORT` when those are set, and still accepts `POSTGRES_URI`, `REDIS_URI`, and `RABBITMQ_URI` for the local stack. Nothing in this repository is deployed on its own.
 
 ## Repository
 
@@ -165,6 +177,7 @@ apps/worker/                      queue consumer
 apps/web/                         Nuxt app
 apps/api-laravel/                 Laravel implementation of the API, relay and worker
 docs/adr/                         architecture decision records and a glossary (Russian)
+scripts/load/                     k6 load test and the database check after it
 apps/HotelPulse.Domain/           validation, status transitions, timeline, delivery policy
 apps/HotelPulse.Infrastructure/   SQL migrations, repositories, Redis, outbox, consumer
 tests/                            unit and integration tests

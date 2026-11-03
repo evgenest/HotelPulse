@@ -10,16 +10,24 @@ outbox row in one Postgres transaction and returns `202`. A relay publishes to
 RabbitMQ, a worker confirms or rejects. Postgres is the source of truth; Redis
 only caches reads.
 
+The same contract (`docs/api.md`) has two implementations: .NET (`apps/api`,
+`apps/worker`, `apps/HotelPulse.*`) and Laravel (`apps/api-laravel`, see its
+own `CLAUDE.md`). They share the SQL schema files and the rules below. A change
+to the contract or the rules is made in both, or in neither.
+
 ```
 apps/HotelPulse.Domain/          booking rules, no I/O — put business logic here
 apps/HotelPulse.Infrastructure/  Postgres (Dapper), Redis, RabbitMQ, SQL migrations
 apps/api/                        HTTP endpoints (Endpoints.cs) and the outbox relay
 apps/worker/                     queue consumer host
-apps/web/                        Nuxt 4 / Vue 3 / TypeScript
+apps/api-laravel/                Laravel 13 / PHP 8.5: the same API, relay and worker
+apps/web/                        Nuxt 4 / Vue 3 / TypeScript, with a .NET / Laravel switch
 tests/HotelPulse.UnitTests/      domain tests, no Docker
 tests/HotelPulse.IntegrationTests/  real Postgres, Redis, RabbitMQ
 docs/specs/                      feature specs — one per feature
 docs/adr/                        architecture decision records — read before changing concurrency, outbox or caching
+docs/why-not-mvp.md              every production decision on one page
+scripts/load/                    k6 load test; results in docs/benchmarks.md
 ```
 
 ## Commands
@@ -29,6 +37,8 @@ npm run test:unit         # fast, no Docker
 npm run test:integration  # needs Docker (Testcontainers) or the *_URI env vars
 npm test                  # both
 npm run typecheck         # frontend
+# Laravel, in apps/api-laravel (PHP 8.5):
+./vendor/bin/pest && ./vendor/bin/pint --test && ./vendor/bin/phpstan analyse
 docker compose up -d --build
 ```
 
@@ -52,15 +62,16 @@ commands; a change is not done until CI is green.
 - **Never edit an applied migration.** Add `NNN_name.sql` in
   `apps/HotelPulse.Infrastructure/Migrations/`. Migrations run in name order
   inside a transaction at API start.
-- **Concurrency is enforced in SQL, not in C#.** Status changes are
+- **Concurrency is enforced in SQL, not in application code (C# or PHP).** Status changes are
   compare-and-set (`WHERE status = ...`). Double booking is prevented by the
   `bookings_no_overlapping_stay` exclusion constraint. Do not replace these
   with read-then-write checks in application code.
 - **Only active statuses hold a room**: `pending` and `confirmed`. The
   exclusion constraint, `bookings_availability_idx` and `AvailabilitySql`
   all filter on that set; keep them in sync.
-- **Every write that changes availability calls
-  `RedisHotelCache.InvalidateHotelAsync(hotelId)`.**
+- **Every write that changes availability invalidates the hotel's cache**:
+  `RedisHotelCache.InvalidateHotelAsync(hotelId)` in .NET,
+  `HotelCache::invalidateHotel($hotelId)` in Laravel.
 - **Redis failures must not fail a request.** The cache returns `BYPASS` and
   the API reads Postgres.
 - Parallel inserts for one room take `pg_advisory_xact_lock` on the room
@@ -75,8 +86,12 @@ commands; a change is not done until CI is green.
 
 - C#: records for data, static classes for pure rules, async all the way,
   `CancellationToken` on every I/O method.
+- PHP: see `apps/api-laravel/CLAUDE.md` — `declare(strict_types=1)`, final
+  readonly classes for data, PHPStan level 8 clean, no `$model->save()` after a
+  read (ADR-0015).
 - SQL: snake_case, explicit column lists, half-open date ranges `[check_in, check_out)`.
 - Tests: names describe behaviour (`A_second_cancel_succeeds_and_changes_nothing`).
 - Commits: Conventional Commits (`feat:`, `fix:`, `docs:`, `chore:`), one
   logical change per commit.
-- Version: `Directory.Build.props` and `apps/web/package.json` change together.
+- Version: `Directory.Build.props`, `apps/web/package.json` and
+  `apps/api-laravel/config/hotelpulse.php` change together (a test checks it).

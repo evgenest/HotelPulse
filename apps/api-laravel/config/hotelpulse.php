@@ -7,7 +7,7 @@ declare(strict_types=1);
 
 return [
     // Keep in step with Directory.Build.props and apps/web/package.json.
-    'version' => '1.1.2',
+    'version' => '1.1.3',
 
     'amqp_url' => env('AMQP_URL', env('RABBITMQ_URI', 'amqp://guest:guest@localhost:5672/')),
     'exchange' => env('HOTELPULSE_EXCHANGE', 'hotelpulse.laravel'),

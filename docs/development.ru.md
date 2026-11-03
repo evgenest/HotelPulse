@@ -7,12 +7,14 @@ apps/HotelPulse.Domain/           правила бронирования, бе�
 apps/HotelPulse.Infrastructure/  PostgreSQL, Redis, RabbitMQ, SQL-миграции
 apps/api/                        HTTP API и outbox-релей
 apps/worker/                     потребитель очереди
-apps/web/                        приложение Nuxt
+apps/api-laravel/                Laravel-реализация: API, релей и воркер (свои тесты в tests/)
+apps/web/                        приложение Nuxt с переключателем .NET / Laravel
 tests/HotelPulse.UnitTests/
 tests/HotelPulse.IntegrationTests/
+scripts/load/                    нагрузочный тест k6 для любого из API
 ```
 
-`POST /api/bookings` проверяет заезд, в одной транзакции пишет бронь и строку outbox и возвращает `202`. Релей публикует `booking.created` в устойчивую очередь `bookings.created`. Воркер идемпотентен: повторная доставка уже подтверждённой или отклонённой брони подтверждается и игнорируется. Пересекающиеся активные заезды отклоняет exclusion-constraint (`409`).
+`POST /api/bookings` проверяет заезд, в одной транзакции пишет бронь и строку outbox и возвращает `202`. Релей публикует `booking.created` в устойчивую очередь (`bookings.created` у .NET, `bookings.created.laravel` у Laravel). Обе реализации следуют одному контракту и одним правилам, см. [`adr/`](adr/README.md). Воркер идемпотентен: повторная доставка уже подтверждённой или отклонённой брони подтверждается и игнорируется. Пересекающиеся активные заезды отклоняет exclusion-constraint (`409`).
 
 ## Тесты
 
@@ -45,6 +47,16 @@ cd apps/web && pnpm install && pnpm dev
 ```
 
 API применяет миграции при старте. Его нужно запустить раньше воркера.
+
+Laravel-API (PHP 8.5; задайте `APP_KEY`, `DATABASE_URL`, `REDIS_URL`, `AMQP_URL`) — три процесса, сначала миграции:
+
+```bash
+cd apps/api-laravel && composer install
+php artisan hotelpulse:migrate
+php artisan octane:frankenphp --port=8081
+php artisan hotelpulse:relay
+php artisan hotelpulse:consume
+```
 
 ## SQL
 

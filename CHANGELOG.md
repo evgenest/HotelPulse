@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.1.3 — 2026-11-03
+
+- Web: the architecture card and the queue widget follow the .NET / Laravel
+  switch (API, worker, exchange and queue names).
+- Both APIs: the timeline step is now `api → published booking.created` (the
+  routing key both share) instead of naming the .NET queue, which was wrong
+  for Laravel bookings. Existing bookings keep their stored label.
+- Docs: README and README.ru (diagram, flow, run, test and deploy sections),
+  CLAUDE.md, docs/api*.md (Laravel exchange, queue and migration table),
+  docs/development*.md and docs/sql.md describe both implementations.
+- ADR-0015: explicit SQL, validator and queue in the Laravel API instead of
+  framework conventions.
+
 ## 1.1.2 — 2026-11-03
 
 - Laravel image runs on Render: the `frankenphp` binary no longer carries the

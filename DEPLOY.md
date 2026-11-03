@@ -2,6 +2,8 @@
 
 The production file is `docker-compose.prod.yml`. Caddy terminates HTTPS and routes `/api/*` and `/health` to the API and everything else to the web app. Postgres, Redis, and RabbitMQ stay on the internal network.
 
+This VPS file and the Kubernetes manifests in `k8s/` run the .NET API. The Laravel API runs locally through the Compose `laravel` profile and on Render as its own service (see below).
+
 Nothing in this repository deploys itself. There are no server credentials here. The steps below are what to run on the machine.
 
 ## 1. DNS and the host

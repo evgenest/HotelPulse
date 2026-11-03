@@ -3,7 +3,8 @@ namespace HotelPulse.Domain;
 public static class BookingLabels
 {
     public const string Received = "api → POST /bookings received";
-    public const string Published = "api → published to bookings.created";
+    // The routing key, which both implementations share; queue names differ.
+    public const string Published = "api → published booking.created";
     public const string Delivered = "worker → message delivered";
     public const string Locked = "worker → reservation locked in postgres";
     public const string Cancelled = "api → booking cancelled";

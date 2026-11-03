@@ -16,7 +16,7 @@ HotelPulse — небольшой сервис бронирования отел
 
 ```mermaid
 flowchart LR
-  web["Nuxt"] -->|HTTP| api[".NET API"]
+  web["Nuxt<br/>переключатель .NET / Laravel"] -->|HTTP| api[".NET API<br/>или Laravel API"]
   api -->|SQL| pg["PostgreSQL"]
   api -->|read-through| redis["Redis"]
   api -->|outbox| mq["RabbitMQ"]
@@ -26,7 +26,9 @@ flowchart LR
   web -->|poll booking| api
 ```
 
-`POST /api/bookings` проверяет заезд, в одной транзакции пишет бронь и строку outbox и возвращает **202 Accepted** со `status: pending`. Релей в API публикует `booking.created` в устойчивую очередь `bookings.created`. Воркер двигает ленту событий и ставит `confirmed` или `rejected`. Страница опрашивает `GET /api/bookings/{id}`, пока статус не станет окончательным.
+Обе реализации работают по этой схеме; у каждой своя база, свои exchange и очередь и свой префикс ключей Redis, поэтому они работают одновременно и не мешают друг другу.
+
+`POST /api/bookings` проверяет заезд, в одной транзакции пишет бронь и строку outbox и возвращает **202 Accepted** со `status: pending`. Релей публикует `booking.created` в устойчивую очередь: `bookings.created` у .NET (релей внутри API), `bookings.created.laravel` у Laravel (релей — отдельный процесс). Воркер двигает ленту событий и ставит `confirmed` или `rejected`. Страница опрашивает `GET /api/bookings/{id}`, пока статус не станет окончательным.
 
 Если воркер остановлен, сообщение остаётся в RabbitMQ, а бронь остаётся `pending`. Запуск воркера её забирает. Повторная доставка уже завершённой брони подтверждается и игнорируется. Если Postgres отклоняет вставку из-за пересечения с другим активным заездом, API отвечает **409**.
 
@@ -72,6 +74,15 @@ curl -fsS http://localhost:8080/health
 curl -fsS http://localhost:8080/api/hotels
 ```
 
+Laravel-API — в профиле `laravel`. Сначала ключ в `.env`:
+
+```bash
+echo "LARAVEL_APP_KEY=base64:$(openssl rand -base64 32)" >> .env
+echo "NUXT_PUBLIC_API_BASE_LARAVEL=http://localhost:8081" >> .env
+docker compose --profile laravel up -d --build
+curl -fsS http://localhost:8081/health
+```
+
 Приложение: <http://localhost:3000>. Управление RabbitMQ: <http://localhost:15672> (`hotelpulse` / `hotelpulse`).
 
 Миграции выполняются при старте API и вставляют шесть отелей. Более ранний checkout этого репозитория использовал MongoDB; `docker compose down -v` удаляет тот неиспользуемый volume вместе с данными Postgres.
@@ -82,6 +93,16 @@ curl -fsS http://localhost:8080/api/hotels
 dotnet run --project apps/api
 dotnet run --project apps/worker
 cd apps/web && pnpm install && pnpm dev
+```
+
+Laravel-API (PHP 8.5; задайте `APP_KEY`, `DATABASE_URL`, `REDIS_URL`, `AMQP_URL`) — три процесса:
+
+```bash
+cd apps/api-laravel && composer install
+php artisan hotelpulse:migrate
+php artisan octane:frankenphp --port=8081   # или: php artisan serve --port=8081
+php artisan hotelpulse:relay
+php artisan hotelpulse:consume
 ```
 
 Kubernetes: соберите образы, загрузите их в `kind` или `minikube` и примените namespace раньше остальных манифестов.
@@ -107,6 +128,17 @@ npm test                    # оба проекта
 npm run typecheck           # Nuxt / Vue
 ```
 
+Laravel (PHP 8.5 с `pdo_pgsql`, `redis`, `pcntl`, `sockets`, `bcmath`; задайте `DATABASE_URL`, `REDIS_URL`, `AMQP_URL`):
+
+```bash
+cd apps/api-laravel && composer install
+./vendor/bin/pest              # unit + feature, включая параллельные запросы
+./vendor/bin/pint --test       # стиль кода
+./vendor/bin/phpstan analyse   # Larastan, уровень 8
+```
+
+Нагрузочный тест (k6 в Docker, оба API, пороги из спеки): [`docs/benchmarks.md`](docs/benchmarks.md).
+
 Интеграционные тесты используют Testcontainers, если Docker доступен и `POSTGRES_URI` не задан. Задайте `POSTGRES_URI`, `REDIS_URI` и `RABBITMQ_URI`, чтобы направить их на уже запущенные сервисы. CI делает это через service containers и затем собирает три образа. См. [`.github/workflows/ci.yml`](.github/workflows/ci.yml).
 
 `HOTELPULSE_CONFIRM_PROBABILITY` по умолчанию `0.9`, поэтому живая бронь иногда отклоняется с причиной «Room became unavailable during processing.». Поставьте `1`, если каждый заезд должен подтверждаться. `HOTELPULSE_STEP_DELAY_MS` заменяет задержки 700 / 800 / 900 мс; тесты ставят `0`.
@@ -129,13 +161,16 @@ docker compose start worker
 
 ## Деплой
 
-[`DEPLOY.md`](DEPLOY.md) описывает два пути. VPS — `docker-compose.prod.yml`, воркер в своём контейнере. Бесплатное демо на Render — [`render.yaml`](render.yaml): API и Nuxt как web-сервисы, Redis как Key Value, Postgres на Neon, RabbitMQ на CloudAMQP. На бесплатном плане Render нет background worker, поэтому Blueprint ставит `RUN_WORKER_IN_PROCESS=true` и очередь читает сам процесс API. В Compose, Kubernetes и `apps/worker` этот флаг выключен. API понимает `DATABASE_URL`, `REDIS_URL`, `AMQP_URL` и `PORT`, а локальный стек по-прежнему задаёт `POSTGRES_URI`, `REDIS_URI` и `RABBITMQ_URI`. Репозиторий сам никуда не деплоится.
+[`DEPLOY.md`](DEPLOY.md) описывает два пути. VPS — `docker-compose.prod.yml`, воркер в своём контейнере; этот файл и манифесты Kubernetes запускают только .NET-API, а Laravel-API работает через профиль Compose `laravel` локально и отдельным сервисом на Render. Бесплатное демо на Render — [`render.yaml`](render.yaml): .NET-API, Laravel-API и Nuxt как web-сервисы, Redis как Key Value, Postgres на Neon, RabbitMQ на CloudAMQP. На бесплатном плане Render нет background worker, поэтому Blueprint ставит `RUN_WORKER_IN_PROCESS=true` и очередь читает сам процесс .NET-API; Laravel-контейнер держит веб, релей и воркер вместе под supervisord. В Compose, Kubernetes и `apps/worker` этот флаг выключен. API понимает `DATABASE_URL`, `REDIS_URL`, `AMQP_URL` и `PORT`, а локальный стек по-прежнему задаёт `POSTGRES_URI`, `REDIS_URI` и `RABBITMQ_URI`. Репозиторий сам никуда не деплоится.
 
 ## Репозиторий
 
 ```
 apps/api/                         HTTP API
 apps/worker/                      потребитель очереди
+apps/api-laravel/                 Laravel-реализация API, релея и воркера
+docs/adr/                         архитектурные решения и словарик терминов
+scripts/load/                     нагрузочный тест k6 и проверка базы после него
 apps/web/                         приложение Nuxt
 apps/HotelPulse.Domain/           валидация, переходы статусов, лента, политика доставки
 apps/HotelPulse.Infrastructure/   SQL-миграции, репозитории, Redis, outbox, consumer

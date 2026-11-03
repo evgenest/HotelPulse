@@ -8,7 +8,8 @@ final class BookingLabels
 {
     public const string Received = 'api → POST /bookings received';
 
-    public const string Published = 'api → published to bookings.created';
+    // The routing key, which both implementations share; queue names differ.
+    public const string Published = 'api → published booking.created';
 
     public const string Delivered = 'worker → message delivered';
 

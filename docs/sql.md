@@ -23,7 +23,7 @@ WHERE r.hotel_id = @hotelId
 ORDER BY r.price, r.id;
 ```
 
-`check_in < checkout AND check_out > checkin` is the same half-open overlap as `daterange(check_in, check_out, '[)') && daterange(...)`. The C# twin is `StayOverlap.Overlaps`.
+`check_in < checkout AND check_out > checkin` is the same half-open overlap as `daterange(check_in, check_out, '[)') && daterange(...)`. The code twins are `StayOverlap.Overlaps` in C# and `StayOverlap::overlaps` in PHP; both are unit-tested against the same cases.
 
 ## Measured plan
 

@@ -7,12 +7,14 @@ apps/HotelPulse.Domain/           booking rules (no I/O)
 apps/HotelPulse.Infrastructure/  PostgreSQL, Redis, RabbitMQ, SQL migrations
 apps/api/                        HTTP API and the outbox relay
 apps/worker/                     queue consumer
-apps/web/                        Nuxt app
+apps/api-laravel/                Laravel implementation: API, relay and worker (own tests in tests/)
+apps/web/                        Nuxt app, with a .NET / Laravel switch
 tests/HotelPulse.UnitTests/
 tests/HotelPulse.IntegrationTests/
+scripts/load/                    k6 load test for either API
 ```
 
-`POST /api/bookings` validates the stay, inserts the booking and an outbox row in one transaction, and returns `202`. A relay publishes `booking.created` to the durable queue `bookings.created`. The worker is idempotent: a second delivery of a booking that is already confirmed or rejected is acknowledged and ignored. Overlapping active stays are rejected by the exclusion constraint (`409`).
+`POST /api/bookings` validates the stay, inserts the booking and an outbox row in one transaction, and returns `202`. A relay publishes `booking.created` to a durable queue (`bookings.created` for .NET, `bookings.created.laravel` for Laravel). Both implementations follow the same contract and rules; see [`adr/`](adr/README.md). The worker is idempotent: a second delivery of a booking that is already confirmed or rejected is acknowledged and ignored. Overlapping active stays are rejected by the exclusion constraint (`409`).
 
 ## Run the tests
 
@@ -45,6 +47,16 @@ cd apps/web && pnpm install && pnpm dev
 ```
 
 The API migrates on startup. Start it before the worker.
+
+The Laravel API (PHP 8.5; set `APP_KEY`, `DATABASE_URL`, `REDIS_URL`, `AMQP_URL`) is three processes; migrate first:
+
+```bash
+cd apps/api-laravel && composer install
+php artisan hotelpulse:migrate
+php artisan octane:frankenphp --port=8081
+php artisan hotelpulse:relay
+php artisan hotelpulse:consume
+```
 
 ## SQL
 

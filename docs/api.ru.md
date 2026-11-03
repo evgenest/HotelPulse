@@ -96,7 +96,7 @@ SQL и план — в [`sql.md`](sql.md).
   "createdAt": "2026-11-02T14:32:00Z",
   "events": [
     { "label": "api → POST /bookings received", "done": true, "time": "14:32:00", "current": false },
-    { "label": "api → published to bookings.created", "done": true, "time": "14:32:00", "current": false },
+    { "label": "api → published booking.created", "done": true, "time": "14:32:00", "current": false },
     { "label": "worker → message delivered", "done": true, "time": "14:32:01", "current": false },
     { "label": "worker → reservation locked in postgres", "done": true, "time": "14:32:02", "current": false },
     { "label": "worker → status: confirmed", "done": true, "time": "14:32:02", "current": false }
@@ -126,7 +126,7 @@ SQL и план — в [`sql.md`](sql.md).
 
 ## Очередь
 
-Обмен `hotelpulse` (topic, durable). Ключ `booking.created`. Очередь `bookings.created` (durable). Сообщения persistent.
+Обмен `hotelpulse` (topic, durable). Ключ `booking.created`. Очередь `bookings.created` (durable). Сообщения persistent. Laravel-API использует обмен `hotelpulse.laravel` и очередь `bookings.created.laravel` (настраиваются через `HOTELPULSE_EXCHANGE` и `HOTELPULSE_QUEUE`), поэтому две реализации никогда не забирают сообщения друг друга. Формат сообщения тот же.
 
 ```json
 {
@@ -143,4 +143,4 @@ SQL и план — в [`sql.md`](sql.md).
 
 ## Таблицы
 
-`hotels`, `rooms`, `bookings`, `outbox`, `idempotency_keys` и `schema_migrations`. Их создаёт `apps/HotelPulse.Infrastructure/Migrations`. Каталог — `002_seed.sql`.
+`hotels`, `rooms`, `bookings`, `outbox`, `idempotency_keys` и журнал миграций: `schema_migrations` (.NET) или `migrations` (Laravel). Их создаёт `apps/HotelPulse.Infrastructure/Migrations`; Laravel-API выполняет побайтовые копии тех же файлов из `apps/api-laravel/database/sql/`. Каталог — `002_seed.sql`.

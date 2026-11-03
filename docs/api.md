@@ -96,7 +96,7 @@ Poll this until `status` is `confirmed` or `rejected`.
   "createdAt": "2026-11-02T14:32:00Z",
   "events": [
     { "label": "api → POST /bookings received", "done": true, "time": "14:32:00", "current": false },
-    { "label": "api → published to bookings.created", "done": true, "time": "14:32:00", "current": false },
+    { "label": "api → published booking.created", "done": true, "time": "14:32:00", "current": false },
     { "label": "worker → message delivered", "done": true, "time": "14:32:01", "current": false },
     { "label": "worker → reservation locked in postgres", "done": true, "time": "14:32:02", "current": false },
     { "label": "worker → status: confirmed", "done": true, "time": "14:32:02", "current": false }
@@ -126,7 +126,7 @@ A cancelled booking no longer holds the room, and the hotel's cached reads are i
 
 ## Queue
 
-Exchange `hotelpulse` (topic, durable). Routing key `booking.created`. Queue `bookings.created` (durable). Messages are persistent.
+Exchange `hotelpulse` (topic, durable). Routing key `booking.created`. Queue `bookings.created` (durable). Messages are persistent. The Laravel API uses exchange `hotelpulse.laravel` and queue `bookings.created.laravel` (configurable with `HOTELPULSE_EXCHANGE` and `HOTELPULSE_QUEUE`), so the two implementations never consume each other's messages. The message format is the same.
 
 ```json
 {
@@ -143,4 +143,4 @@ The pipeline waits 700 ms, then 800 ms, then 900 ms unless `HOTELPULSE_STEP_DELA
 
 ## Tables
 
-`hotels`, `rooms`, `bookings`, `outbox`, `idempotency_keys`, plus `schema_migrations`. Created by `apps/HotelPulse.Infrastructure/Migrations`. The catalog is `002_seed.sql`.
+`hotels`, `rooms`, `bookings`, `outbox`, `idempotency_keys`, plus the migration log: `schema_migrations` (.NET) or `migrations` (Laravel). Created by `apps/HotelPulse.Infrastructure/Migrations`; the Laravel API runs byte-for-byte copies of the same files from `apps/api-laravel/database/sql/`. The catalog is `002_seed.sql`.
