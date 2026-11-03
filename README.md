@@ -9,9 +9,10 @@ It is a learning project. The aim is not only working code and a demo, but to un
 ## Live demo
 
 - Web: https://hotelpulse-web.onrender.com
-- API: https://hotelpulse-api.onrender.com ([`/health`](https://hotelpulse-api.onrender.com/health), [`/api/hotels`](https://hotelpulse-api.onrender.com/api/hotels))
+- .NET API: https://hotelpulse-api.onrender.com ([`/health`](https://hotelpulse-api.onrender.com/health), [`/api/hotels`](https://hotelpulse-api.onrender.com/api/hotels))
+- Laravel API: https://hotelpulse-api-laravel.onrender.com ([`/health`](https://hotelpulse-api-laravel.onrender.com/health), [`/api/hotels`](https://hotelpulse-api-laravel.onrender.com/api/hotels))
 
-Both run on Render's free plan in Frankfurt, with Postgres on Neon and RabbitMQ on CloudAMQP. Free services sleep when idle, so the first request can take up to a minute.
+The web app has a **.NET / Laravel** switch in the header. All three run on Render's free plan in Frankfurt, with Postgres on Neon (a separate database per API) and RabbitMQ on CloudAMQP. Free services sleep when idle, so the first request can take up to a minute.
 
 ## Architecture
 
